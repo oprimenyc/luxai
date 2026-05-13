@@ -43,6 +43,15 @@ class OrchestratorSettings(BaseSettings):
     max_tokens_per_step: int = Field(default=8192, ge=1)
     request_timeout_seconds: int = Field(default=300, ge=30)
 
+    # ── Per-agent models ─────────────────────────────────────────────────
+    critic_model: str = "gpt-4o"
+    researcher_model: str = "gpt-4o"
+    executor_model: str = "gpt-4o-mini"
+
+    # ── Service URLs ─────────────────────────────────────────────────────
+    orchestrator_url: str = "http://localhost:8001"
+    api_service_url: str = "http://localhost:8000"
+
 
 @lru_cache
 def get_settings() -> OrchestratorSettings:

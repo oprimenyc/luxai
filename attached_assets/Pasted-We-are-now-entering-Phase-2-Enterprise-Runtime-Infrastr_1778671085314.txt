@@ -1,0 +1,336 @@
+We are now entering Phase 2: Enterprise Runtime Infrastructure.
+
+The current monorepo foundation is complete.
+
+Your task now is to evolve this into a production-grade luxury AI operating system with:
+
+* realtime orchestration visibility
+* enterprise observability
+* persistent memory
+* execution governance
+* premium command-center UX
+* streaming infrastructure
+* fault tolerance
+* agent telemetry
+* auditability
+
+DO NOT generate placeholder implementations.
+
+All systems must be production-grade, modular, typed, scalable, and visually premium.
+
+========================================
+OBJECTIVES
+==========
+
+Implement the following systems in order:
+
+1. Realtime Agent Monitoring System
+2. Persistent Memory Layer
+3. Agent Telemetry + Observability
+4. Execution Governance Layer
+5. Luxury Executive Dashboard
+6. Streaming Infrastructure
+7. Production Security Hardening
+8. Autonomous Workflow Engine
+
+========================================
+
+1. REALTIME AGENT MONITORING SYSTEM
+   ========================================
+
+Create a realtime orchestration dashboard that streams:
+
+* LangGraph node transitions
+* active agents
+* task state changes
+* token usage
+* latency metrics
+* execution timelines
+* retries
+* failures
+* confidence scores
+* memory retrieval events
+
+Requirements:
+
+* websocket architecture
+* SSE fallback
+* optimistic UI updates
+* event replay
+* realtime charts
+* timeline visualizations
+* orchestration graph visualization
+* live execution console
+* task inspection drawer
+* agent execution tracing
+
+Frontend:
+
+* Next.js 15
+* React Server Components
+* Framer Motion
+* Recharts
+* shadcn/ui
+* glassmorphism dark luxury UI
+
+Backend:
+
+* FastAPI websocket gateway
+* async event bus
+* structured event schemas
+* typed event contracts
+* event persistence
+
+Generate:
+
+* architecture
+* websocket manager
+* event models
+* streaming hooks
+* frontend dashboard
+* orchestration visualization
+* timeline components
+* telemetry ingestion pipeline
+
+========================================
+2. PERSISTENT MEMORY SYSTEM
+===========================
+
+Implement enterprise memory infrastructure.
+
+Memory types:
+
+* semantic memory
+* episodic memory
+* workflow memory
+* user memory
+* project memory
+* strategic memory
+
+Requirements:
+
+* Supabase pgvector
+* retrieval ranking
+* memory aging
+* memory compression
+* contextual recall
+* hybrid search
+* metadata filtering
+* memory scoring
+* audit logs
+
+Generate:
+
+* DB schema
+* vector pipeline
+* embedding workflows
+* retrieval engine
+* memory APIs
+* memory manager agent
+* memory lifecycle rules
+
+========================================
+3. OBSERVABILITY + TELEMETRY
+============================
+
+Implement enterprise-grade observability.
+
+Requirements:
+
+* distributed tracing
+* OpenTelemetry
+* LangSmith integration
+* structured logging
+* Prometheus metrics
+* request correlation IDs
+* execution spans
+* latency tracking
+* failure analytics
+* token consumption analytics
+
+Integrate:
+
+* Sentry
+* Posthog
+* Logfire
+
+Generate:
+
+* observability architecture
+* middleware
+* tracing decorators
+* metrics pipeline
+* dashboards
+* monitoring hooks
+
+========================================
+4. EXECUTION GOVERNANCE LAYER
+=============================
+
+Implement risk and governance controls.
+
+Requirements:
+
+* execution approval gates
+* human-in-the-loop controls
+* risk scoring
+* policy engine
+* tool permissioning
+* role-based access
+* execution sandboxing
+* retry budgets
+* escalation paths
+* kill switch system
+
+Generate:
+
+* governance architecture
+* RBAC schema
+* execution policies
+* approval workflows
+* risk engine
+* admin controls
+
+========================================
+5. LUXURY EXECUTIVE DASHBOARD
+=============================
+
+Transform the frontend into a premium command center.
+
+Aesthetic:
+
+* Palantir
+* Bloomberg
+* Apple
+* Arc Browser
+* high-end fintech terminal
+
+Requirements:
+
+* cinematic motion
+* orchestration graph
+* realtime dashboards
+* animated transitions
+* floating panels
+* command palette
+* keyboard-first UX
+* dynamic layouts
+* responsive architecture
+* elegant loading states
+* skeleton systems
+* premium typography
+
+Generate:
+
+* full dashboard layouts
+* design system refinements
+* motion architecture
+* navigation system
+* command center interface
+* orchestration visualizer
+* metrics panels
+* activity timelines
+
+========================================
+6. STREAMING INFRASTRUCTURE
+===========================
+
+Implement production-grade streaming.
+
+Requirements:
+
+* token streaming
+* websocket multiplexing
+* event batching
+* reconnection logic
+* backpressure handling
+* stream buffering
+* edge compatibility
+* replay support
+
+Generate:
+
+* websocket gateway
+* event queues
+* streaming APIs
+* React streaming hooks
+* edge-safe transport layer
+
+========================================
+7. SECURITY HARDENING
+=====================
+
+Implement enterprise security.
+
+Requirements:
+
+* rate limiting
+* JWT rotation
+* RLS enforcement
+* CSP headers
+* secure cookies
+* CSRF protection
+* API gateway protections
+* audit logging
+* encrypted secrets
+* abuse prevention
+
+Generate:
+
+* security middleware
+* hardening configs
+* Supabase policies
+* Cloudflare protections
+* secret management
+
+========================================
+8. AUTONOMOUS WORKFLOW ENGINE
+=============================
+
+Implement autonomous execution pipelines.
+
+Requirements:
+
+* recursive planning
+* reflection loops
+* critic validation
+* retry orchestration
+* workflow decomposition
+* state checkpoints
+* execution recovery
+* scheduling
+* asynchronous task execution
+
+Generate:
+
+* workflow engine
+* planner agent
+* execution runtime
+* task queue architecture
+* checkpointing system
+* recovery engine
+
+========================================
+IMPORTANT RULES
+===============
+
+* No placeholders
+* No toy implementations
+* No fake data
+* No simplistic dashboards
+* No low-quality styling
+* No temporary architecture
+
+Everything must:
+
+* scale
+* stream
+* recover
+* persist
+* trace
+* audit
+* deploy cleanly
+
+Use enterprise architecture throughout.
+
+Generate production-ready code only.
