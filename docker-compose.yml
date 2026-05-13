@@ -1,0 +1,122 @@
+name: luxai
+
+services:
+  # ─── Infrastructure ──────────────────────────────────────────────────────
+  postgres:
+    image: supabase/postgres:15.8.1.060
+    restart: unless-stopped
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: luxai
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./infra/docker/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d luxai"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7.4-alpine
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    command: redis-server --appendonly yes --requirepass ""
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  # ─── Services ────────────────────────────────────────────────────────────
+  api:
+    build:
+      context: apps/api
+      dockerfile: Dockerfile
+      target: runner
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    env_file:
+      - apps/api/.env
+    environment:
+      ENVIRONMENT: development
+      REDIS_URL: redis://redis:6379/0
+    depends_on:
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./apps/api/src:/app/src:ro
+    develop:
+      watch:
+        - action: sync
+          path: ./apps/api/src
+          target: /app/src
+
+  orchestrator:
+    build:
+      context: apps/orchestrator
+      dockerfile: Dockerfile
+      target: runner
+    restart: unless-stopped
+    ports:
+      - "8001:8001"
+    env_file:
+      - apps/orchestrator/.env
+    environment:
+      ENVIRONMENT: development
+      REDIS_URL: redis://redis:6379/1
+    depends_on:
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./apps/orchestrator/src:/app/src:ro
+    develop:
+      watch:
+        - action: sync
+          path: ./apps/orchestrator/src
+          target: /app/src
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+      target: runner
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    env_file:
+      - apps/web/.env.local
+    depends_on:
+      - api
+      - orchestrator
+    develop:
+      watch:
+        - action: rebuild
+          path: apps/web
+
+  nginx:
+    image: nginx:1.27-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    volumes:
+      - ./infra/docker/nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - web
+      - api
+      - orchestrator
+
+volumes:
+  postgres_data:
+  redis_data:
+
+networks:
+  default:
+    name: luxai_network

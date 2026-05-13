@@ -1,0 +1,4 @@
+#!/bin/sh
+
+# Run lint-staged on staged TypeScript/JavaScript files
+npx lint-staged

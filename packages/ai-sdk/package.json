@@ -1,0 +1,23 @@
+{
+  "name": "@luxai/ai-sdk",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": {
+      "import": "./src/index.ts",
+      "types": "./src/index.ts"
+    }
+  },
+  "dependencies": {
+    "@luxai/types": "workspace:*",
+    "ai": "^4.3.16",
+    "eventsource-parser": "^3.0.1",
+    "zod": "^3.24.4"
+  },
+  "devDependencies": {
+    "@luxai/config": "workspace:*",
+    "@types/node": "^22.15.21",
+    "typescript": "^5.8.3"
+  }
+}

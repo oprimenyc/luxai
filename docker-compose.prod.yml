@@ -1,0 +1,100 @@
+name: luxai-prod
+
+services:
+  api:
+    build:
+      context: apps/api
+      dockerfile: Dockerfile
+      target: runner
+    restart: always
+    deploy:
+      replicas: 2
+      update_config:
+        parallelism: 1
+        delay: 10s
+        order: start-first
+      rollback_config:
+        parallelism: 1
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 1G
+        reservations:
+          cpus: "0.25"
+          memory: 256M
+    env_file:
+      - apps/api/.env.production
+    environment:
+      ENVIRONMENT: production
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "5"
+
+  orchestrator:
+    build:
+      context: apps/orchestrator
+      dockerfile: Dockerfile
+      target: runner
+    restart: always
+    deploy:
+      replicas: 1
+      resources:
+        limits:
+          cpus: "2.0"
+          memory: 2G
+        reservations:
+          cpus: "0.5"
+          memory: 512M
+    env_file:
+      - apps/orchestrator/.env.production
+    environment:
+      ENVIRONMENT: production
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "5"
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+      target: runner
+    restart: always
+    deploy:
+      replicas: 2
+      update_config:
+        parallelism: 1
+        delay: 10s
+        order: start-first
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 512M
+    env_file:
+      - apps/web/.env.production
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "5"
+
+  nginx:
+    image: nginx:1.27-alpine
+    restart: always
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./infra/docker/nginx.prod.conf:/etc/nginx/nginx.conf:ro
+      - /etc/letsencrypt:/etc/letsencrypt:ro
+    depends_on:
+      - web
+      - api
+      - orchestrator
+
+networks:
+  default:
+    name: luxai_prod_network

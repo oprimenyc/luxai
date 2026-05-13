@@ -47,3 +47,42 @@ Thumbs.db
 # Replit
 .cache/
 .local/
+
+# ── Python ────────────────────────────────────────────────────────────────────
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+.venv/
+*.egg-info/
+.eggs/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+htmlcov/
+.coverage
+coverage.xml
+
+# ── Environment ───────────────────────────────────────────────────────────────
+.env
+.env.local
+.env.production
+.env.staging
+.env.*.local
+!.env.example
+!apps/**/.env.example
+!apps/**/.env.local.example
+
+# ── Build outputs ─────────────────────────────────────────────────────────────
+.next/
+build/
+out/
+
+# ── Tooling ───────────────────────────────────────────────────────────────────
+.turbo/
+.vercel/
+.wrangler/
+docker-compose.override.yml
+logs/
+*.log

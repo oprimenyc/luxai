@@ -1,0 +1,20 @@
+# Build outputs
+.next/
+dist/
+build/
+out/
+*.tsbuildinfo
+
+# Generated
+lib/api-client-react/src/generated/
+lib/api-zod/src/generated/
+
+# Dependencies
+node_modules/
+.venv/
+
+# Lock files
+pnpm-lock.yaml
+
+# Infra
+infra/cloudflare/_routes.json
