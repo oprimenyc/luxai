@@ -58,6 +58,20 @@ class Settings(BaseSettings):
     langchain_tracing_v2: bool = False
     langchain_project: str = "luxai"
 
+    # ── Alpaca Paper Trading ──────────────────────────────────────────────
+    # IMPORTANT: These keys must be for Alpaca PAPER trading accounts only.
+    # The trading engine enforces paper mode programmatically and will
+    # raise an error if a live account is detected.
+    alpaca_api_key: str = ""
+    alpaca_api_secret: str = ""
+
+    # ── Tradier (future integration) ─────────────────────────────────────
+    tradier_api_key: str = ""
+    tradier_sandbox: bool = True  # always sandbox unless explicitly overridden
+
+    # ── OTLP Tracing ─────────────────────────────────────────────────────
+    otlp_endpoint: str = ""
+
 
 @lru_cache
 def get_settings() -> Settings:

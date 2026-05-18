@@ -52,6 +52,23 @@ class EventType(StrEnum):
     WORKFLOW_CHECKPOINT = "workflow.checkpoint"
     WORKFLOW_RECOVERED = "workflow.recovered"
 
+    # Workflow
+    WORKFLOW_COMPLETED = "workflow.completed"
+    WORKFLOW_FAILED = "workflow.failed"
+
+    # Trading (paper/simulation only — no live trading events)
+    TRADE_ORDER_SUBMITTED = "trade.order_submitted"
+    TRADE_ORDER_FILLED = "trade.order_filled"
+    TRADE_ORDER_CANCELLED = "trade.order_cancelled"
+    TRADE_ORDER_REJECTED = "trade.order_rejected"
+    TRADE_POSITION_OPENED = "trade.position_opened"
+    TRADE_POSITION_CLOSED = "trade.position_closed"
+    TRADE_PNL_RECORDED = "trade.pnl_recorded"
+    TRADE_RISK_TRIGGERED = "trade.risk_triggered"
+    TRADE_DAILY_LOSS_HALTED = "trade.daily_loss_halted"
+    TRADE_PORTFOLIO_SNAPSHOT = "trade.portfolio_snapshot"
+    TRADE_REPLAY_COMPLETED = "trade.replay_completed"
+
     # System
     SYSTEM_HEARTBEAT = "system.heartbeat"
     SYSTEM_ERROR = "system.error"

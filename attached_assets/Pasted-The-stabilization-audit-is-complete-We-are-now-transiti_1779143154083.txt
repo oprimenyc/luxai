@@ -1,0 +1,196 @@
+The stabilization audit is complete.
+
+We are now transitioning into operational validation and deterministic paper trading infrastructure.
+
+IMPORTANT:
+Do NOT introduce speculative architectures, new orchestration systems, swarm logic, recursive delegation, or unnecessary infrastructure complexity.
+
+The existing architecture is sufficient.
+
+==================================================
+PHASE OBJECTIVES
+================
+
+1. Validate the entire platform operationally
+2. Ensure all existing systems function reliably
+3. Build deterministic paper trading infrastructure
+4. Prepare options/SPY execution architecture
+5. Refine the luxury operational dashboard
+6. Improve observability and execution tracing
+
+==================================================
+STEP 1 — FULL OPERATIONAL VALIDATION
+====================================
+
+Run and validate the complete stack end-to-end.
+
+Validate:
+
+* frontend startup
+* FastAPI startup
+* LangGraph orchestration execution
+* websocket streaming
+* Supabase auth
+* realtime updates
+* pgvector retrieval
+* event persistence
+* Docker orchestration
+* environment loading
+* CI workflows
+
+Identify and fix:
+
+* startup failures
+* broken runtime flows
+* websocket instability
+* reconnect storms
+* race conditions
+* memory leaks
+* high CPU usage
+* async deadlocks
+* stale state issues
+* frontend hydration issues
+
+Generate:
+
+* health check endpoints
+* operational diagnostics
+* startup verification scripts
+* runtime validation tools
+* local developer verification commands
+
+==================================================
+STEP 2 — DETERMINISTIC PAPER TRADING FOUNDATION
+===============================================
+
+Implement a production-grade paper trading foundation.
+
+Requirements:
+
+* broker abstraction layer
+* Alpaca paper trading integration
+* Tradier-ready architecture
+* simulated order execution
+* deterministic execution engine
+* portfolio state tracking
+* order lifecycle management
+* execution journaling
+* PnL tracking
+* replay engine
+* market data ingestion
+* audit logs
+
+IMPORTANT:
+No live trading.
+
+All trading systems must default to:
+
+* paper mode
+* simulation mode
+* approval-required mode
+
+==================================================
+STEP 3 — OPTIONS/SPY EXECUTION PREPARATION
+==========================================
+
+Prepare infrastructure for options workflows.
+
+Implement:
+
+* options chain ingestion
+* spread calculation
+* slippage estimation
+* volatility filters
+* Greeks-ready architecture
+* deterministic stop-loss engine
+* deterministic take-profit engine
+* deterministic trailing stop engine
+* position exposure controls
+* hard risk constraints
+
+IMPORTANT:
+LLMs must NEVER directly control:
+
+* exits
+* stop losses
+* order routing
+* position sizing
+
+All execution-critical logic must be deterministic Python code.
+
+==================================================
+STEP 4 — EXECUTIVE DASHBOARD REFINEMENT
+=======================================
+
+Refine the dashboard into a luxury operational control center.
+
+Improve:
+
+* responsiveness
+* visual hierarchy
+* realtime visibility
+* command workflows
+* motion smoothness
+* loading states
+* typography
+* spacing
+* dark-mode aesthetics
+* execution visibility
+
+Focus on:
+
+* clarity
+* speed
+* confidence
+* premium operational feel
+
+Avoid:
+
+* clutter
+* unnecessary widgets
+* excessive animations
+
+==================================================
+STEP 5 — OBSERVABILITY + DEBUGGING
+==================================
+
+Improve:
+
+* execution tracing
+* workflow replay
+* latency monitoring
+* websocket diagnostics
+* orchestration inspection
+* token accounting
+* trade journaling
+* event debugging
+
+Generate:
+
+* operational replay tools
+* debugging dashboard
+* execution inspector
+* audit visibility
+
+==================================================
+FINAL GOAL
+==========
+
+The final result should be:
+
+* a stable operational luxury MVP
+* capable of autonomous research
+* capable of deterministic paper trading
+* suitable for internal use
+* architecturally prepared for future controlled live testing
+
+Optimize for:
+
+* reliability
+* operational clarity
+* execution quality
+* maintainability
+* deterministic behavior
+* low-latency execution
+
+Do not optimize for maximum complexity.

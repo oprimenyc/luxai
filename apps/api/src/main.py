@@ -21,6 +21,7 @@ from src.security.middleware import RateLimitMiddleware, SecurityHeadersMiddlewa
 from src.telemetry.setup import configure_logging, configure_tracing, instrument_app
 from src.websocket.gateway import router as ws_router
 from src.websocket.manager import ws_manager
+from src.trading.router import router as trading_router
 from src.workflows.router import router as workflows_router
 
 log = structlog.get_logger(__name__)
@@ -95,6 +96,7 @@ def create_app() -> FastAPI:
     app.include_router(memory_router, prefix="/api/v1")
     app.include_router(governance_router, prefix="/api/v1")
     app.include_router(workflows_router, prefix="/api/v1")
+    app.include_router(trading_router, prefix="/api/v1")
     app.include_router(ws_router, prefix="/api/v1")
 
     return app

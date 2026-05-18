@@ -10,6 +10,7 @@ import {
   Command,
   GitBranch,
   LayoutDashboard,
+  LineChart,
   LogOut,
   Settings,
   Shield,
@@ -29,6 +30,7 @@ const NAV_ITEMS = [
   { href: "/memory", label: "Memory", icon: Brain, section: "observe" },
   { href: "/workflows", label: "Workflows", icon: GitBranch, section: "automate" },
   { href: "/governance", label: "Governance", icon: Shield, section: "automate" },
+  { href: "/trading", label: "Trading", icon: LineChart, section: "automate", badge: "paper" },
   { href: "/settings", label: "Settings", icon: Settings, section: "system" },
 ];
 

@@ -10,6 +10,7 @@ const PROTECTED_ROUTES = [
   "/memory",
   "/workflows",
   "/governance",
+  "/trading",
   "/settings",
 ];
 const AUTH_ROUTES = ["/login", "/signup", "/forgot-password"];
