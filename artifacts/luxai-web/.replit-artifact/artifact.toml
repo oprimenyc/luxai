@@ -1,0 +1,21 @@
+kind = "web"
+previewPath = "/"
+title = "LuxAI"
+version = "1.0.0"
+id = "artifacts/luxai-web"
+router = "path"
+
+[[integratedSkills]]
+name = "react-vite"
+version = "1.0.0"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 3000
+
+[services.development]
+run = "PORT=3000 pnpm --filter @luxai/web run dev"
+
+[services.env]
+PORT = "3000"
