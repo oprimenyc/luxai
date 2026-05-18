@@ -34,8 +34,12 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         version=settings.app_version,
     )
     ws_manager.start_heartbeat()
-    yield
-    log.info("luxai_api_shutting_down")
+    try:
+        yield
+    finally:
+        log.info("luxai_api_shutting_down")
+        await ws_manager.stop_heartbeat()
+        await ws_manager.close_all()
 
 
 def create_app() -> FastAPI:

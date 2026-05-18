@@ -37,6 +37,8 @@ class EventBus:
         self._sequence: int = 0
         self._published_count: int = 0
         self._dropped_count: int = 0
+        # Hold strong references to background tasks to prevent premature GC
+        self._tasks: set[asyncio.Task[None]] = set()
 
     async def publish(self, event: BaseEvent) -> None:
         """Publish an event to all subscribers."""
@@ -50,11 +52,11 @@ class EventBus:
 
         # Notify typed handlers
         for handler in self._handlers.get(event.type, []):
-            asyncio.create_task(self._safe_call(handler, event))
+            self._spawn(self._safe_call(handler, event))
 
         # Notify global handlers
         for handler in self._global_handlers:
-            asyncio.create_task(self._safe_call(handler, event))
+            self._spawn(self._safe_call(handler, event))
 
         # Fan out to session-specific queues
         if event.session_id:
@@ -71,6 +73,12 @@ class EventBus:
                 await queue.put(event)
             else:
                 self._dropped_count += 1
+
+    def _spawn(self, coro: Coroutine[Any, Any, None]) -> None:
+        """Create a background task and hold a strong reference until completion."""
+        task: asyncio.Task[None] = asyncio.create_task(coro)
+        self._tasks.add(task)
+        task.add_done_callback(self._tasks.discard)
 
     def subscribe(self, event_type: EventType, handler: Handler) -> None:
         """Register a typed event handler."""
@@ -154,6 +162,7 @@ class EventBus:
             "dropped": self._dropped_count,
             "sequence": self._sequence,
             "active_sessions": len(self._session_queues),
+            "pending_tasks": len(self._tasks),
         }
 
     @staticmethod
@@ -161,7 +170,11 @@ class EventBus:
         try:
             await handler(event)
         except Exception:
-            log.exception("event_handler_error", handler=handler.__name__)
+            log.exception(
+                "event_handler_error",
+                handler=getattr(handler, "__name__", repr(handler)),
+                event_type=str(event.type),
+            )
 
 
 # ── Singleton ─────────────────────────────────────────────────────────────────

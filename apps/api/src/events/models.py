@@ -1,6 +1,6 @@
 """Typed event contracts for the LuxAI event bus."""
 
-from datetime import datetime
+from datetime import UTC, datetime
 from enum import StrEnum
 from typing import Any, Literal
 from uuid import UUID, uuid4
@@ -71,7 +71,7 @@ class BaseEvent(BaseModel):
     id: UUID = Field(default_factory=uuid4)
     type: EventType
     severity: EventSeverity = EventSeverity.INFO
-    timestamp: datetime = Field(default_factory=datetime.utcnow)
+    timestamp: datetime = Field(default_factory=lambda: datetime.now(UTC))
     session_id: str | None = None
     agent_id: str | None = None
     user_id: str | None = None

@@ -1,6 +1,6 @@
 """Governance domain models — RBAC, policies, risk scoring, approvals."""
 
-from datetime import datetime
+from datetime import UTC, datetime
 from enum import StrEnum
 from typing import Any
 from uuid import UUID
@@ -124,7 +124,7 @@ class RiskAssessment(BaseModel):
     factors: list[RiskFactor]
     requires_approval: bool
     policy_triggered: str | None = None
-    assessed_at: datetime = Field(default_factory=datetime.utcnow)
+    assessed_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
 
 class ApprovalRequest(BaseModel):

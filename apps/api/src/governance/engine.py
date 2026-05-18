@@ -1,7 +1,7 @@
 """Risk engine, policy evaluation, and approval gate."""
 
 import re
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from typing import Any
 from uuid import uuid4
 
@@ -169,8 +169,8 @@ class ApprovalGate:
             agent_id=assessment.agent_id,
             user_id=user_id,
             risk_assessment=assessment,
-            created_at=datetime.utcnow(),
-            expires_at=datetime.utcnow() + timedelta(minutes=30),
+            created_at=datetime.now(UTC),
+            expires_at=datetime.now(UTC) + timedelta(minutes=30),
         )
         self._pending[assessment.session_id] = request
 
@@ -209,14 +209,14 @@ class ApprovalGate:
         if not request:
             return None
 
-        if datetime.utcnow() > request.expires_at:
+        if datetime.now(UTC) > request.expires_at:
             request.status = ApprovalStatus.EXPIRED
             return request
 
         request.status = ApprovalStatus.APPROVED if approved else ApprovalStatus.DENIED
         request.approved_by = resolved_by
         request.denial_reason = reason
-        request.resolved_at = datetime.utcnow()
+        request.resolved_at = datetime.now(UTC)
 
         log.info(
             "approval_resolved",
@@ -242,7 +242,7 @@ class ApprovalGate:
                     "reason": reason,
                     "activated_by": activated_by,
                     "affected_sessions": session_ids,
-                    "timestamp": datetime.utcnow().isoformat(),
+                    "timestamp": datetime.now(UTC).isoformat(),
                 },
             )
         )
@@ -255,7 +255,7 @@ class ApprovalGate:
 
     def get_pending(self, session_id: str) -> ApprovalRequest | None:
         req = self._pending.get(session_id)
-        if req and datetime.utcnow() > req.expires_at:
+        if req and datetime.now(UTC) > req.expires_at:
             req.status = ApprovalStatus.EXPIRED
             self._pending.pop(session_id, None)
             return None

@@ -4,7 +4,7 @@ import hashlib
 import hmac
 import secrets
 import time
-from collections import defaultdict, deque
+from collections import deque
 from collections.abc import Callable
 
 import structlog
@@ -14,21 +14,39 @@ from starlette.middleware.base import BaseHTTPMiddleware
 
 log = structlog.get_logger(__name__)
 
+# Maximum tracked IPs per limiter before stale entries are evicted
+_MAX_BUCKETS = 10_000
+
 
 class RateLimiter:
-    """Token bucket rate limiter — in-memory (use Redis in multi-process prod)."""
+    """
+    Sliding-window rate limiter — in-memory.
+
+    Memory bound: evicts stale buckets when `_MAX_BUCKETS` is reached.
+    For multi-process deployments replace with a Redis-backed implementation.
+    """
 
     def __init__(self, requests_per_minute: int = 60) -> None:
         self._rpm = requests_per_minute
         self._window = 60.0
-        self._buckets: dict[str, deque[float]] = defaultdict(deque)
+        self._buckets: dict[str, deque[float]] = {}
 
     def is_allowed(self, key: str) -> tuple[bool, int]:
         """Returns (allowed, retry_after_seconds)."""
         now = time.monotonic()
-        bucket = self._buckets[key]
 
-        # Remove timestamps outside the window
+        # Evict stale buckets under memory pressure
+        if len(self._buckets) >= _MAX_BUCKETS:
+            stale_keys = [
+                k for k, v in self._buckets.items()
+                if not v or v[-1] < now - self._window
+            ]
+            for k in stale_keys[: len(stale_keys) // 2 + 1]:
+                self._buckets.pop(k, None)
+
+        bucket = self._buckets.setdefault(key, deque())
+
+        # Slide window: remove timestamps older than `_window`
         while bucket and bucket[0] < now - self._window:
             bucket.popleft()
 
@@ -61,7 +79,7 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
 
 
 class RateLimitMiddleware(BaseHTTPMiddleware):
-    """Per-IP + per-user rate limiting."""
+    """Per-IP sliding-window rate limiting with path-based tier selection."""
 
     def __init__(
         self,
@@ -95,12 +113,11 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
                 headers={"Retry-After": str(retry_after)},
             )
 
-        response = await call_next(request)
-        return response
+        return await call_next(request)
 
 
 def generate_csrf_token(secret: str, user_id: str) -> str:
-    """Generate a CSRF token tied to a user session."""
+    """Generate a time-bound CSRF token tied to a user session."""
     nonce = secrets.token_hex(16)
     sig = hmac.new(
         secret.encode(),
@@ -111,7 +128,7 @@ def generate_csrf_token(secret: str, user_id: str) -> str:
 
 
 def verify_csrf_token(secret: str, user_id: str, token: str) -> bool:
-    """Verify a CSRF token."""
+    """Verify a CSRF token using constant-time comparison."""
     try:
         nonce, sig = token.split(".", 1)
     except ValueError:

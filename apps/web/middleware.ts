@@ -1,7 +1,17 @@
 import { createServerClient } from "@supabase/ssr";
+import { type ResponseCookie } from "next/dist/compiled/@edge-runtime/cookies";
 import { NextResponse, type NextRequest } from "next/server";
 
-const PROTECTED_ROUTES = ["/dashboard", "/agents", "/settings"];
+const PROTECTED_ROUTES = [
+  "/dashboard",
+  "/agents",
+  "/sessions",
+  "/monitoring",
+  "/memory",
+  "/workflows",
+  "/governance",
+  "/settings",
+];
 const AUTH_ROUTES = ["/login", "/signup", "/forgot-password"];
 
 export async function middleware(request: NextRequest) {
@@ -15,13 +25,15 @@ export async function middleware(request: NextRequest) {
         getAll() {
           return request.cookies.getAll();
         },
-        setAll(cookiesToSet) {
+        setAll(
+          cookiesToSet: Array<{ name: string; value: string; options?: Partial<ResponseCookie> }>,
+        ) {
           cookiesToSet.forEach(({ name, value }) =>
-            request.cookies.set(name, value)
+            request.cookies.set(name, value),
           );
           supabaseResponse = NextResponse.next({ request });
           cookiesToSet.forEach(({ name, value, options }) =>
-            supabaseResponse.cookies.set(name, value, options)
+            supabaseResponse.cookies.set(name, value, options),
           );
         },
       },

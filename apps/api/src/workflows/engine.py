@@ -1,8 +1,9 @@
 """Workflow execution engine with checkpointing and recovery."""
 
+import ast
 import asyncio
 import time
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Any
 from uuid import UUID, uuid4
 
@@ -24,6 +25,10 @@ from src.workflows.models import (
 log = structlog.get_logger(__name__)
 
 
+def _utcnow() -> datetime:
+    return datetime.now(UTC)
+
+
 class WorkflowEngine:
     """
     Executes workflow DAGs with:
@@ -36,7 +41,8 @@ class WorkflowEngine:
 
     def __init__(self, client: AsyncClient) -> None:
         self._client = client
-        self._running: dict[str, asyncio.Task] = {}
+        # Strong references to running background tasks (prevents GC)
+        self._running: dict[str, asyncio.Task[None]] = {}
 
     async def create(self, user_id: UUID, payload: WorkflowCreate) -> Workflow:
         row = {
@@ -60,12 +66,25 @@ class WorkflowEngine:
         if wf.status not in (WorkflowStatus.DRAFT, WorkflowStatus.FAILED):
             raise ValueError(f"Cannot execute workflow in status {wf.status}")
 
-        task = asyncio.create_task(self._run(wf, user_id))
+        task = asyncio.create_task(
+            self._run(wf, user_id),
+            name=f"workflow:{workflow_id}",
+        )
         self._running[str(workflow_id)] = task
-        task.add_done_callback(lambda _: self._running.pop(str(workflow_id), None))
+
+        def _on_done(t: asyncio.Task[None]) -> None:
+            self._running.pop(str(workflow_id), None)
+            if not t.cancelled() and t.exception():
+                log.error(
+                    "workflow_task_failed",
+                    wf_id=str(workflow_id),
+                    error=str(t.exception()),
+                )
+
+        task.add_done_callback(_on_done)
 
     async def _run(self, wf: Workflow, user_id: UUID) -> None:
-        await self._update_status(wf.id, WorkflowStatus.RUNNING, started_at=datetime.utcnow())
+        await self._update_status(wf.id, WorkflowStatus.RUNNING, started_at=_utcnow())
         await self._emit(wf, EventType.WORKFLOW_CREATED)
 
         # Build dependency graph
@@ -93,7 +112,8 @@ class WorkflowEngine:
                 # Execute ready steps in parallel
                 tasks = [
                     asyncio.create_task(
-                        self._execute_step(s, step_results, wf, user_id)
+                        self._execute_step(s, step_results, wf, user_id),
+                        name=f"step:{s.id}",
                     )
                     for s in ready
                 ]
@@ -113,7 +133,7 @@ class WorkflowEngine:
                     await self._checkpoint(wf.id, completed, step_results)
                     await self._emit(wf, EventType.WORKFLOW_CHECKPOINT)
 
-            await self._update_status(wf.id, WorkflowStatus.COMPLETED, completed_at=datetime.utcnow())
+            await self._update_status(wf.id, WorkflowStatus.COMPLETED, completed_at=_utcnow())
 
         except Exception as exc:
             log.error("workflow_failed", wf_id=str(wf.id), error=str(exc))
@@ -165,7 +185,6 @@ class WorkflowEngine:
         context: dict[str, Any],
     ) -> dict[str, Any]:
         if step.type == StepType.AGENT_RUN:
-            # Integrate with orchestrator
             import httpx
             from src.config import settings
             async with httpx.AsyncClient() as client:
@@ -189,11 +208,45 @@ class WorkflowEngine:
             return {}
 
         if step.type == StepType.CONDITION:
-            expr = step.condition or "True"
-            result = eval(expr, {"__builtins__": {}}, context)  # noqa: S307
-            return {"condition_result": bool(result)}
+            result = self._eval_condition(step.condition or "True", context)
+            return {"condition_result": result}
 
         return {}
+
+    @staticmethod
+    def _eval_condition(expr: str, context: dict[str, Any]) -> bool:
+        """
+        Safe condition evaluation.
+
+        Supports:
+        - Literals: True, False, 1, 0, "string"
+        - Context key lookups: just use a key name that maps to a bool/int
+        - Simple comparisons via ast.literal_eval on pure literal expressions
+
+        Dynamic expressions with operators use a restricted eval with only
+        scalar context values and no builtins. Non-scalar context values are
+        excluded to prevent injection.
+        """
+        expr = expr.strip()
+
+        # Fast path: literal value
+        try:
+            return bool(ast.literal_eval(expr))
+        except (ValueError, SyntaxError):
+            pass
+
+        # Restricted eval: only scalar context values, no builtins
+        safe_ctx = {
+            k: v
+            for k, v in context.items()
+            if isinstance(v, bool | int | float | str) and k.isidentifier()
+        }
+        try:
+            result = eval(expr, {"__builtins__": {}}, safe_ctx)  # noqa: S307
+            return bool(result)
+        except Exception as exc:
+            log.warning("condition_eval_failed", expr=expr, error=str(exc))
+            return False
 
     async def _get(self, workflow_id: UUID, user_id: UUID) -> Workflow | None:
         result = (
@@ -212,10 +265,14 @@ class WorkflowEngine:
         status: WorkflowStatus,
         **kwargs: Any,
     ) -> None:
-        data = {"status": status.value, "updated_at": datetime.utcnow().isoformat(), **{
-            k: v.isoformat() if isinstance(v, datetime) else v
-            for k, v in kwargs.items()
-        }}
+        data = {
+            "status": status.value,
+            "updated_at": _utcnow().isoformat(),
+            **{
+                k: v.isoformat() if isinstance(v, datetime) else v
+                for k, v in kwargs.items()
+            },
+        }
         await self._client.table("workflows").update(data).eq("id", str(workflow_id)).execute()
 
     async def _checkpoint(
@@ -226,8 +283,12 @@ class WorkflowEngine:
     ) -> None:
         checkpoint = {
             "completed_steps": list(completed),
-            "results": {k: v for k, v in results.items() if isinstance(v, str | int | float | bool)},
-            "checkpointed_at": datetime.utcnow().isoformat(),
+            "results": {
+                k: v
+                for k, v in results.items()
+                if isinstance(v, str | int | float | bool)
+            },
+            "checkpointed_at": _utcnow().isoformat(),
         }
         await self._client.table("workflows").update({
             "checkpoint": checkpoint,

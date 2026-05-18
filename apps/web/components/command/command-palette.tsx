@@ -160,8 +160,9 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
   const grouped = useMemo(() => {
     const groups: Record<string, CommandItem[]> = {};
     for (const cmd of filtered) {
-      groups[cmd.category] ??= [];
-      groups[cmd.category].push(cmd);
+      const bucket = groups[cmd.category] ?? [];
+      bucket.push(cmd);
+      groups[cmd.category] = bucket;
     }
     return groups;
   }, [filtered]);

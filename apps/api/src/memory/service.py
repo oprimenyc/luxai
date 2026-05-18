@@ -1,7 +1,7 @@
 """Memory service — pgvector hybrid search, aging, and lifecycle management."""
 
 import json
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from typing import Any
 from uuid import UUID
 
@@ -173,7 +173,7 @@ class MemoryService:
 
     async def run_aging(self, user_id: UUID) -> int:
         """Expire stale memories and compress old episodic memories."""
-        now = datetime.utcnow().isoformat()
+        now = datetime.now(UTC).isoformat()
 
         # Expire memories past their TTL
         expired = (
@@ -191,11 +191,17 @@ class MemoryService:
         return count
 
     async def _update_access(self, memory_ids: list[str]) -> None:
+        """Update last_accessed_at; increment access_count via the RPC helper."""
         try:
+            now = datetime.now(UTC).isoformat()
             await self._client.table("memories").update({
-                "access_count": self._client.table("memories")  # type: ignore[arg-type]
-                .select("access_count"),  # Supabase doesn't support increment in update directly
-                "last_accessed_at": datetime.utcnow().isoformat(),
+                "last_accessed_at": now,
             }).in_("id", memory_ids).execute()
+            # Increment access_count via the database helper function
+            for memory_id in memory_ids:
+                await self._client.rpc(
+                    "increment_memory_access",
+                    {"memory_id": memory_id},
+                ).execute()
         except Exception:
-            pass  # Non-critical
+            pass  # Non-critical — do not fail retrieval on access tracking errors

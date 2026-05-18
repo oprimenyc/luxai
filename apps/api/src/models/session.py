@@ -1,6 +1,6 @@
 """Session domain models."""
 
-from datetime import datetime
+from datetime import UTC, datetime
 from enum import StrEnum
 from typing import Any
 from uuid import UUID
@@ -28,7 +28,7 @@ class Message(BaseModel):
     content: str
     tool_calls: list[dict[str, Any]] | None = None
     tool_call_id: str | None = None
-    timestamp: datetime = Field(default_factory=datetime.utcnow)
+    timestamp: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
 
 class SessionBase(BaseModel):

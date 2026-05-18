@@ -35,7 +35,7 @@ class WebSocketManager:
 
     - Per-user connection tracking
     - Session-scoped subscription fanout
-    - Heartbeat loop
+    - Heartbeat loop with graceful shutdown
     - JSON serialization with error isolation
     """
 
@@ -43,6 +43,13 @@ class WebSocketManager:
         self._connections: dict[str, Connection] = {}  # conn_id → Connection
         self._user_connections: dict[str, set[str]] = {}  # user_id → {conn_ids}
         self._heartbeat_task: asyncio.Task[None] | None = None
+        self._shutdown: asyncio.Event | None = None
+
+    def _get_shutdown_event(self) -> asyncio.Event:
+        """Lazy-init shutdown event (requires running event loop)."""
+        if self._shutdown is None:
+            self._shutdown = asyncio.Event()
+        return self._shutdown
 
     async def connect(
         self,
@@ -84,8 +91,8 @@ class WebSocketManager:
     async def broadcast(self, event: BaseEvent) -> None:
         """Broadcast an event to all relevant connections."""
         dead: list[str] = []
-        for conn_id, conn in self._connections.items():
-            # Only send to connections interested in this event
+        # Snapshot keys to avoid dict-changed-size-during-iteration
+        for conn_id, conn in list(self._connections.items()):
             if conn.session_id and conn.session_id != event.session_id:
                 continue
             if conn.user_id and event.user_id and conn.user_id != event.user_id:
@@ -145,14 +152,36 @@ class WebSocketManager:
         conn.message_count += 1
 
     def start_heartbeat(self) -> None:
+        """Start the heartbeat background task. Safe to call multiple times."""
         if self._heartbeat_task is None or self._heartbeat_task.done():
-            self._heartbeat_task = asyncio.create_task(self._heartbeat_loop())
+            self._get_shutdown_event().clear()
+            self._heartbeat_task = asyncio.create_task(
+                self._heartbeat_loop(),
+                name="ws_heartbeat",
+            )
+
+    async def stop_heartbeat(self) -> None:
+        """Signal the heartbeat to stop and await its cancellation."""
+        self._get_shutdown_event().set()
+        if self._heartbeat_task and not self._heartbeat_task.done():
+            self._heartbeat_task.cancel()
+            try:
+                await self._heartbeat_task
+            except asyncio.CancelledError:
+                pass
+        self._heartbeat_task = None
 
     async def _heartbeat_loop(self) -> None:
-        while True:
-            await asyncio.sleep(HEARTBEAT_INTERVAL)
+        shutdown = self._get_shutdown_event()
+        while not shutdown.is_set():
+            try:
+                await asyncio.wait_for(shutdown.wait(), timeout=HEARTBEAT_INTERVAL)
+                break  # Shutdown was signalled
+            except asyncio.TimeoutError:
+                pass  # Normal — interval elapsed, send heartbeats
+
             dead: list[str] = []
-            for conn_id, conn in self._connections.items():
+            for conn_id, conn in list(self._connections.items()):
                 try:
                     await conn.websocket.send_json({
                         "type": "heartbeat",
@@ -162,6 +191,17 @@ class WebSocketManager:
                     dead.append(conn_id)
             for conn_id in dead:
                 await self.disconnect(conn_id)
+
+    async def close_all(self) -> None:
+        """Gracefully close all connections during shutdown."""
+        for conn_id in list(self._connections.keys()):
+            conn = self._connections.get(conn_id)
+            if conn:
+                try:
+                    await conn.websocket.close(code=1001, reason="Server shutting down")
+                except Exception:
+                    pass
+            await self.disconnect(conn_id)
 
     @property
     def stats(self) -> dict[str, Any]:
