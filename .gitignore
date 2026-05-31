@@ -86,3 +86,5 @@ out/
 docker-compose.override.yml
 logs/
 *.log
+
+DEPLOY_STATUS.md
