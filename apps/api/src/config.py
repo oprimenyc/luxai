@@ -1,9 +1,12 @@
 """Application configuration via pydantic-settings."""
 
+from __future__ import annotations
+
+import json
 from functools import lru_cache
 from typing import Literal
 
-from pydantic import AliasChoices, Field, field_validator
+from pydantic import AliasChoices, Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -23,14 +26,27 @@ class Settings(BaseSettings):
     debug: bool = False
 
     # ── CORS ─────────────────────────────────────────────────────────────
-    cors_origins: list[str] = ["http://localhost:3000"]
+    # Stored as a plain str to avoid pydantic_settings v2 JSON-parsing list
+    # fields before field validators run. The public `cors_origins` property
+    # returns the parsed list and is used by the CORS middleware in main.py.
+    # Accepts either comma-separated ("a,b") or JSON array ('["a","b"]').
+    cors_origins_raw: str = Field(
+        default="http://localhost:3000",
+        validation_alias=AliasChoices("cors_origins"),
+    )
 
-    @field_validator("cors_origins", mode="before")
-    @classmethod
-    def parse_cors(cls, v: str | list[str]) -> list[str]:
-        if isinstance(v, str):
-            return [origin.strip() for origin in v.split(",")]
-        return v
+    @property
+    def cors_origins(self) -> list[str]:
+        """Return CORS origins as a list regardless of how they were stored."""
+        v = self.cors_origins_raw.strip()
+        if v.startswith("["):
+            try:
+                parsed = json.loads(v)
+                if isinstance(parsed, list):
+                    return [str(o).strip() for o in parsed if str(o).strip()]
+            except (json.JSONDecodeError, ValueError):
+                pass
+        return [o.strip() for o in v.split(",") if o.strip()]
 
     # ── Supabase ─────────────────────────────────────────────────────────
     supabase_url: str
