@@ -25,9 +25,13 @@ export const metadata: Metadata = {
   keywords: ["AI", "multi-agent", "LangGraph", "automation", "orchestration"],
   authors: [{ name: "LuxAI" }],
   creator: "LuxAI",
-  metadataBase: new URL(
-    process.env.NEXT_PUBLIC_APP_URL ?? "https://luxai.app"
-  ),
+  metadataBase: (() => {
+    try {
+      return new URL((process.env.NEXT_PUBLIC_APP_URL ?? "https://luxai.app").trim());
+    } catch {
+      return new URL("https://luxai.app");
+    }
+  })(),
   openGraph: {
     type: "website",
     locale: "en_US",
@@ -55,16 +59,14 @@ export const viewport: Viewport = {
   initialScale: 1,
 };
 
-export default function RootLayout({
-  children,
-}: Readonly<{ children: React.ReactNode }>) {
+export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html
       lang="en"
       className={`${inter.variable} ${jetbrainsMono.variable}`}
       suppressHydrationWarning
     >
-      <body className="min-h-screen bg-background font-sans antialiased">
+      <body className="bg-background min-h-screen font-sans antialiased">
         <Providers>{children}</Providers>
       </body>
     </html>
