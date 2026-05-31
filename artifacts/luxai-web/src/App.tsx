@@ -8,10 +8,10 @@ const queryClient = new QueryClient();
 
 function Home() {
   return (
-    <div className="min-h-screen w-full flex items-center justify-center bg-gray-50">
+    <div className="flex min-h-screen w-full items-center justify-center bg-gray-50">
       <div className="text-center">
-        <h1 className="text-2xl font-bold text-gray-900">Replit Agent is building...</h1>
-        <p className="mt-2 text-sm text-gray-600">Your app will appear here once it's ready.</p>
+        <h1 className="text-2xl font-bold text-gray-900">LuxAI OS</h1>
+        <p className="mt-2 text-sm text-gray-600">Loading...</p>
       </div>
     </div>
   );
