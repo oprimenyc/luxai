@@ -6,7 +6,10 @@ import { cn } from "@/lib/utils";
 
 type WorkflowStatus = "draft" | "running" | "completed" | "failed" | "queued";
 
-const STATUS_CONFIG: Record<WorkflowStatus, { label: string; color: string; icon: React.ComponentType<{ className?: string }> }> = {
+const STATUS_CONFIG: Record<
+  WorkflowStatus,
+  { label: string; color: string; icon: React.ComponentType<{ className?: string }> }
+> = {
   draft: { label: "Draft", color: "text-zinc-400", icon: GitBranch },
   queued: { label: "Queued", color: "text-amber-400", icon: GitBranch },
   running: { label: "Running", color: "text-blue-400", icon: Loader2 },
@@ -50,12 +53,16 @@ const MOCK_WORKFLOWS = [
 export function WorkflowsClient() {
   return (
     <div className="space-y-6">
-      <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="flex items-center justify-between">
+      <motion.div
+        initial={{ opacity: 0, y: -10 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="flex items-center justify-between"
+      >
         <div>
           <h2 className="text-2xl font-bold tracking-tight text-white">Workflows</h2>
           <p className="mt-1 text-sm text-zinc-500">Autonomous execution pipelines</p>
         </div>
-        <button className="flex items-center gap-2 rounded-lg bg-white/10 px-4 py-2 text-sm font-medium text-white border border-white/10 transition-colors hover:bg-white/15">
+        <button className="flex items-center gap-2 rounded-lg border border-white/10 bg-white/10 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-white/15">
           <Plus className="h-4 w-4" />
           New Workflow
         </button>
@@ -73,22 +80,35 @@ export function WorkflowsClient() {
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: i * 0.05 }}
-              className="group rounded-xl border border-white/10 bg-zinc-950 p-5 hover:border-white/20 transition-colors cursor-pointer"
+              className="group cursor-pointer rounded-xl border border-white/10 bg-zinc-950 p-5 transition-colors hover:border-white/20"
             >
               <div className="flex items-start justify-between">
                 <div className="flex-1">
-                  <div className="flex items-center gap-3 mb-1">
-                    <StatusIcon className={cn("h-4 w-4", cfg.color, wf.status === "running" && "animate-spin")} />
+                  <div className="mb-1 flex items-center gap-3">
+                    <StatusIcon
+                      className={cn(
+                        "h-4 w-4",
+                        cfg.color,
+                        wf.status === "running" && "animate-spin",
+                      )}
+                    />
                     <span className="text-sm font-semibold text-white">{wf.name}</span>
                     <span className={cn("text-xs", cfg.color)}>{cfg.label}</span>
                   </div>
-                  <p className="text-xs text-zinc-500 mb-3">{wf.description}</p>
+                  <p className="mb-3 text-xs text-zinc-500">{wf.description}</p>
 
                   {/* Step progress */}
                   <div className="flex items-center gap-3">
-                    <div className="flex-1 max-w-xs h-1 rounded-full bg-white/10">
+                    <div className="h-1 max-w-xs flex-1 rounded-full bg-white/10">
                       <motion.div
-                        className={cn("h-1 rounded-full", wf.status === "completed" ? "bg-emerald-500" : wf.status === "failed" ? "bg-rose-500" : "bg-blue-500")}
+                        className={cn(
+                          "h-1 rounded-full",
+                          wf.status === "completed"
+                            ? "bg-emerald-500"
+                            : wf.status === "failed"
+                              ? "bg-rose-500"
+                              : "bg-blue-500",
+                        )}
                         initial={{ width: 0 }}
                         animate={{ width: `${progress}%` }}
                         transition={{ duration: 0.5 }}
@@ -100,10 +120,13 @@ export function WorkflowsClient() {
                   </div>
                 </div>
 
-                <div className="flex flex-col items-end gap-2 ml-4">
+                <div className="ml-4 flex flex-col items-end gap-2">
                   <div className="flex gap-1">
                     {wf.tags.map((tag) => (
-                      <span key={tag} className="rounded bg-white/5 px-2 py-0.5 text-[10px] text-zinc-600">
+                      <span
+                        key={tag}
+                        className="rounded bg-white/5 px-2 py-0.5 text-[10px] text-zinc-600"
+                      >
                         #{tag}
                       </span>
                     ))}
