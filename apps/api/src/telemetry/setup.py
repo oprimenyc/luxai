@@ -19,7 +19,7 @@ def configure_logging(environment: str = "development") -> None:
     """Configure structlog with JSON output in production."""
     shared_processors: list[structlog.types.Processor] = [
         structlog.contextvars.merge_contextvars,
-        structlog.stdlib.add_logger_name,
+        # add_logger_name requires stdlib logging backend; incompatible with PrintLoggerFactory
         structlog.stdlib.add_log_level,
         structlog.stdlib.PositionalArgumentsFormatter(),
         structlog.processors.TimeStamper(fmt="iso"),
