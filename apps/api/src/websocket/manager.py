@@ -20,8 +20,10 @@ MAX_CONNECTIONS_PER_USER = 10
 
 @dataclass
 class Connection:
-    id: str = field(default_factory=lambda: str(uuid.uuid4()))
+    # Required fields first (no defaults) — Python 3.11 strict ordering rule
     websocket: WebSocket = field(repr=False)
+    # Fields with defaults follow
+    id: str = field(default_factory=lambda: str(uuid.uuid4()))
     user_id: str = ""
     session_id: str | None = None
     subscriptions: set[str] = field(default_factory=set)
