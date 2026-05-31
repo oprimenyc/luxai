@@ -5,9 +5,9 @@
 
 .DEFAULT_GOAL := help
 .PHONY: help setup install dev dev-web dev-api dev-orchestrator \
-        build typecheck lint format test \
+        build typecheck lint format test test-integration \
         docker-dev docker-prod docker-down docker-logs \
-        db-migrate db-reset \
+        db-migrate db-reset lint-nginx validate-stack \
         husky-install clean
 
 # ── Colours ───────────────────────────────────────────────────────────────────
@@ -85,11 +85,14 @@ build: ## Build all packages for production
 
 test: test-api test-orchestrator ## Run all tests
 
-test-api: ## Run FastAPI tests
+test-api: ## Run FastAPI unit + integration tests
 	cd apps/api && pytest --cov=src --cov-report=term-missing -q
 
 test-orchestrator: ## Run orchestrator tests
 	cd apps/orchestrator && pytest -q
+
+test-integration: ## Run API integration tests (requires running stack)
+	cd apps/api && pytest tests/integration/ -v --tb=short
 
 # ── Docker ────────────────────────────────────────────────────────────────────
 
@@ -116,6 +119,12 @@ docker-logs-orchestrator: ## Tail orchestrator container logs
 
 docker-ps: ## Show running containers
 	docker compose ps
+
+lint-nginx: ## Validate nginx config using Docker (no nginx install required)
+	docker run --rm -v "$(PWD)/infra/docker/nginx.conf:/etc/nginx/nginx.conf:ro" nginx:1.27-alpine nginx -t
+
+validate-stack: ## Run stack validation script against running services
+	bash scripts/validate_stack.sh
 
 # ── Database ──────────────────────────────────────────────────────────────────
 

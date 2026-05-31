@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 from datetime import UTC, date, datetime
 from typing import Any
 from uuid import uuid4
@@ -10,6 +11,7 @@ import httpx
 import structlog
 
 from src.trading.broker import BrokerABC
+from src.trading.circuit_breaker import CircuitBreaker, CircuitBreakerOpen
 from src.trading.models import (
     AssetClass,
     ExecutionMode,
@@ -31,14 +33,25 @@ log = structlog.get_logger(__name__)
 
 _PAPER_BASE = "https://paper-api.alpaca.markets/v2"
 
+# HTTP status codes that are transient and worth retrying.
+_RETRYABLE_STATUS: frozenset[int] = frozenset({429, 500, 502, 503, 504})
+_MAX_RETRIES = 3
+_RETRY_BASE_DELAY = 1.0  # seconds; doubles each attempt (1s, 2s, 4s)
+
 
 class AlpacaPaperBroker(BrokerABC):
     """
     Alpaca paper trading adapter.
 
     ALWAYS connects to paper-api.alpaca.markets — never live.
-    Any attempt to change the base URL to live endpoint will
+    Any attempt to change the base URL to the live endpoint will
     fail validation in connect().
+
+    All outbound HTTP requests go through:
+      1. A circuit breaker (fast-fails when Alpaca is down)
+      2. Per-request retry with exponential backoff (transient 5xx / 429)
+
+    LLM cannot affect routing, retries, or circuit state.
     """
 
     execution_mode: ExecutionMode = ExecutionMode.PAPER
@@ -56,6 +69,13 @@ class AlpacaPaperBroker(BrokerABC):
         self._market_data: MarketDataClient | None = None
         self._connected = False
 
+        # Separate circuit breakers for trading API vs. market data
+        self._trading_circuit = CircuitBreaker(
+            "alpaca_trading_api",
+            failure_threshold=5,
+            recovery_timeout=30.0,
+        )
+
     # ── Lifecycle ────────────────────────────────────────────────────────────
 
     async def connect(self) -> None:
@@ -67,12 +87,13 @@ class AlpacaPaperBroker(BrokerABC):
         self._market_data = MarketDataClient(self._api_key, self._api_secret)
         await self._market_data.connect()
 
-        # Verify connectivity + confirm paper mode
+        # Verify connectivity + confirm paper mode (no retry — intentional: fail fast on connect)
         resp = await self._client.get("/account")
         resp.raise_for_status()
         account = resp.json()
         if not account.get("paper_trading", False):
             await self.disconnect()
+            log.critical("CRITICAL: Alpaca account is LIVE. Immediately locking.")
             raise RuntimeError(
                 "Alpaca account is NOT a paper account. Live trading is disabled."
             )
@@ -93,10 +114,88 @@ class AlpacaPaperBroker(BrokerABC):
     def is_connected(self) -> bool:
         return self._connected
 
+    @property
+    def trading_circuit_state(self) -> str:
+        return self._trading_circuit.state.value
+
     def _http(self) -> httpx.AsyncClient:
         if not self._client:
-            raise RuntimeError("AlpacaPaperBroker not connected")
+            raise RuntimeError("AlpacaPaperBroker not connected — call connect() first")
         return self._client
+
+    # ── Resilient HTTP helper ────────────────────────────────────────────────
+
+    async def _request(
+        self,
+        method: str,
+        path: str,
+        **kwargs: Any,
+    ) -> httpx.Response:
+        """
+        Make an HTTP request with:
+        - Circuit breaker (fast-fail when Alpaca is known-down)
+        - Retry with exponential backoff for transient errors (429, 5xx)
+        """
+        async def _attempt() -> httpx.Response:
+            last_exc: Exception | None = None
+
+            for attempt in range(_MAX_RETRIES):
+                try:
+                    resp = await self._http().request(method, path, **kwargs)
+                    if resp.status_code in _RETRYABLE_STATUS:
+                        # Treat retryable status codes as exceptions so the
+                        # circuit breaker counts them as failures after all retries.
+                        raise httpx.HTTPStatusError(
+                            f"Retryable HTTP {resp.status_code}",
+                            request=resp.request,
+                            response=resp,
+                        )
+                    resp.raise_for_status()
+                    return resp
+                except httpx.HTTPStatusError as exc:
+                    if exc.response.status_code in _RETRYABLE_STATUS:
+                        last_exc = exc
+                        if attempt < _MAX_RETRIES - 1:
+                            delay = _RETRY_BASE_DELAY * (2 ** attempt)
+                            log.warning(
+                                "alpaca_request_retry",
+                                method=method,
+                                path=path,
+                                status=exc.response.status_code,
+                                attempt=attempt + 1,
+                                delay=delay,
+                            )
+                            await asyncio.sleep(delay)
+                        continue
+                    # 4xx (except 429) — not retryable
+                    raise
+                except (httpx.ConnectError, httpx.TimeoutException, httpx.NetworkError) as exc:
+                    last_exc = exc
+                    if attempt < _MAX_RETRIES - 1:
+                        delay = _RETRY_BASE_DELAY * (2 ** attempt)
+                        log.warning(
+                            "alpaca_request_network_retry",
+                            method=method,
+                            path=path,
+                            error=str(exc),
+                            attempt=attempt + 1,
+                            delay=delay,
+                        )
+                        await asyncio.sleep(delay)
+
+            assert last_exc is not None
+            raise last_exc
+
+        try:
+            return await self._trading_circuit.call(_attempt())
+        except CircuitBreakerOpen:
+            log.error(
+                "alpaca_circuit_open",
+                method=method,
+                path=path,
+                circuit=self._trading_circuit.state.value,
+            )
+            raise
 
     # ── Orders ───────────────────────────────────────────────────────────────
 
@@ -119,21 +218,18 @@ class AlpacaPaperBroker(BrokerABC):
         if request.client_order_id:
             payload["client_order_id"] = request.client_order_id
 
-        resp = await self._http().post("/orders", json=payload)
-        resp.raise_for_status()
+        resp = await self._request("POST", "/orders", json=payload)
         return self._parse_order(resp.json(), original_id=request.id)
 
     async def cancel_order(self, broker_order_id: str) -> Order:
-        resp = await self._http().delete(f"/orders/{broker_order_id}")
+        resp = await self._request("DELETE", f"/orders/{broker_order_id}")
         if resp.status_code == 204:
             # Alpaca returns 204 on successful cancel — re-fetch for state
             return await self.get_order(broker_order_id)
-        resp.raise_for_status()
         return self._parse_order(resp.json())
 
     async def get_order(self, broker_order_id: str) -> Order:
-        resp = await self._http().get(f"/orders/{broker_order_id}")
-        resp.raise_for_status()
+        resp = await self._request("GET", f"/orders/{broker_order_id}")
         return self._parse_order(resp.json())
 
     async def list_orders(
@@ -144,25 +240,24 @@ class AlpacaPaperBroker(BrokerABC):
         params: dict[str, Any] = {"limit": limit}
         if status:
             params["status"] = status
-        resp = await self._http().get("/orders", params=params)
-        resp.raise_for_status()
+        resp = await self._request("GET", "/orders", params=params)
         return [self._parse_order(o) for o in resp.json()]
 
     # ── Portfolio ─────────────────────────────────────────────────────────────
 
     async def get_positions(self) -> list[Position]:
-        resp = await self._http().get("/positions")
-        resp.raise_for_status()
+        resp = await self._request("GET", "/positions")
         return [self._parse_position(p) for p in resp.json()]
 
     async def get_portfolio(self) -> PortfolioSnapshot:
-        resp = await self._http().get("/account")
-        resp.raise_for_status()
+        resp = await self._request("GET", "/account")
         account = resp.json()
 
-        positions_resp = await self._http().get("/positions")
-        positions_resp.raise_for_status()
-        positions = {p.symbol: p for p in (self._parse_position(p) for p in positions_resp.json())}
+        positions_resp = await self._request("GET", "/positions")
+        positions = {
+            p.symbol: p
+            for p in (self._parse_position(p) for p in positions_resp.json())
+        }
 
         return PortfolioSnapshot(
             account_id=account.get("id", ""),
@@ -179,6 +274,11 @@ class AlpacaPaperBroker(BrokerABC):
             raise RuntimeError("MarketDataClient not available")
         return await self._market_data.get_quote(symbol)
 
+    async def subscribe_quotes(self, symbols: list[str], callback: Any) -> None:
+        if not self._market_data:
+            raise RuntimeError("MarketDataClient not available")
+        await self._market_data.subscribe_quotes(symbols, callback)
+
     async def get_options_chain(self, underlying: str, expiration: date) -> OptionsChain:
         if not self._market_data:
             raise RuntimeError("MarketDataClient not available")
@@ -188,8 +288,6 @@ class AlpacaPaperBroker(BrokerABC):
 
     @staticmethod
     def _parse_order(raw: dict[str, Any], original_id: Any = None) -> Order:
-        from uuid import UUID
-
         status_map = {
             "new": OrderStatus.SUBMITTED,
             "pending_new": OrderStatus.PENDING,

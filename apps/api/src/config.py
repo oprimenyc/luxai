@@ -3,7 +3,7 @@
 from functools import lru_cache
 from typing import Literal
 
-from pydantic import Field, field_validator
+from pydantic import AliasChoices, Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -44,8 +44,12 @@ class Settings(BaseSettings):
     orchestrator_url: str = "http://localhost:8001"
     orchestrator_api_key: str = ""
 
-    # ── Redis ────────────────────────────────────────────────────────────
-    redis_url: str = "redis://localhost:6379/0"
+    # ── Redis (Upstash) ──────────────────────────────────────────────────
+    # Reads UPSTASH_REDIS_URL from env (rediss://default:<token>@<host>.upstash.io:6379)
+    redis_url: str = Field(
+        default="",
+        validation_alias=AliasChoices("upstash_redis_url"),
+    )
 
     # ── OpenAI ───────────────────────────────────────────────────────────
     openai_api_key: str = ""

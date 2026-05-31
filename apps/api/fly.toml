@@ -1,0 +1,44 @@
+# Fly.io configuration for the LuxAI FastAPI backend.
+# Docs: https://fly.io/docs/reference/configuration/
+#
+# Deploy: cd apps/api && fly deploy
+# Logs:   fly logs --app luxai-api
+# SSH:    fly ssh console --app luxai-api
+
+app            = "luxai-api"
+primary_region = "iad"    # US East — closest to Sanford FL
+
+[build]
+  dockerfile = "Dockerfile"
+
+# Non-secret environment variables only.
+# Secrets (API keys, tokens, JWTs) are set via: fly secrets set KEY=VALUE
+[env]
+  ENVIRONMENT          = "production"
+  ALPACA_PAPER         = "true"
+  ALPACA_BASE_URL      = "https://paper-api.alpaca.markets"
+  TRADIER_SANDBOX      = "true"
+  LANGCHAIN_TRACING_V2 = "false"
+  LANGCHAIN_PROJECT    = "luxai-os"
+
+[http_service]
+  internal_port        = 8000
+  force_https          = true
+  # auto_stop_machines MUST be false — the shadow trade monitor is a
+  # background asyncio task that polls every 60s. If the machine sleeps,
+  # open shadow trades stop being evaluated. Never enable auto-stop.
+  auto_stop_machines   = false
+  auto_start_machines  = true
+  min_machines_running = 1
+
+  [[http_service.checks]]
+    grace_period = "15s"
+    interval     = "30s"
+    method       = "GET"
+    path         = "/api/v1/health"
+    timeout      = "5s"
+
+[[vm]]
+  cpu_kind  = "shared"
+  cpus      = 1
+  memory_mb = 256

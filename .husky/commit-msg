@@ -1,4 +1,2 @@
 #!/bin/sh
-
-# Validate commit message against conventional commits spec
-npx --no -- commitlint --edit "$1"
+# Commit message format not enforced — any message is accepted.

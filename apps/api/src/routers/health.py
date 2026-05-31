@@ -188,3 +188,165 @@ async def _check_orchestrator() -> ServiceStatus:
 async def _is_ok(coro: Any) -> bool:
     result = await coro
     return isinstance(result, ServiceStatus) and result.status == "ok"
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# /api/v1/health — operational health with trading-specific context
+# ══════════════════════════════════════════════════════════════════════════════
+
+
+class TradingHealthResponse(BaseModel):
+    supabase: str           # "ok" | "error"
+    redis: str              # "ok" | "error"
+    shadow_mode: bool       # True = shadow is active (safe state)
+    kill_switch: bool       # True = kill switch is active (trading halted)
+    tradier: str            # "ok" | "error"
+    alpaca: str             # "ok" | "error"
+    version: str
+    phase: str
+
+
+@router.get("/api/v1/health", response_model=TradingHealthResponse)
+async def trading_health() -> TradingHealthResponse:
+    """
+    Trading-specific health check. Returns structured status for each
+    external service and active safety state flags.
+
+    All checks run in parallel with 3s timeouts. One failure does not
+    crash the endpoint — each check degrades independently.
+    """
+    results = await asyncio.gather(
+        _ping_supabase(),
+        _ping_redis(),
+        _ping_shadow_mode(),
+        _ping_kill_switch(),
+        _ping_tradier(),
+        _ping_alpaca(),
+        return_exceptions=True,
+    )
+
+    def _str(r: Any) -> str:
+        return r if isinstance(r, str) else "error"
+
+    def _bool(r: Any) -> bool:
+        return r if isinstance(r, bool) else True  # fail-safe: assume halted/active
+
+    return TradingHealthResponse(
+        supabase=_str(results[0]),
+        redis=_str(results[1]),
+        shadow_mode=_bool(results[2]),
+        kill_switch=_bool(results[3]),
+        tradier=_str(results[4]),
+        alpaca=_str(results[5]),
+        version=settings.app_version,
+        phase="B3-complete",
+    )
+
+
+async def _ping_supabase() -> str:
+    try:
+        from src.services.supabase_service import get_supabase_client
+        client = await get_supabase_client()
+        await asyncio.wait_for(
+            client.table("shadow_mode_config").select("id").limit(1).execute(),
+            timeout=3.0,
+        )
+        return "ok"
+    except Exception:
+        return "error"
+
+
+async def _ping_redis() -> str:
+    try:
+        import redis.asyncio as aioredis
+        r = aioredis.from_url(settings.redis_url, socket_connect_timeout=2)
+        await asyncio.wait_for(r.ping(), timeout=2.0)
+        await r.aclose()
+        return "ok"
+    except Exception:
+        return "error"
+
+
+async def _ping_shadow_mode() -> bool:
+    """Return True if shadow mode is currently active (the safe default)."""
+    try:
+        import redis.asyncio as aioredis
+        from src.services.supabase_service import get_supabase_client
+        from src.trading.shadow import ShadowModeService
+
+        redis_client = aioredis.from_url(
+            settings.redis_url,
+            encoding="utf-8",
+            decode_responses=False,
+            socket_connect_timeout=2,
+            socket_timeout=2,
+        )
+        supabase = await get_supabase_client()
+        svc = ShadowModeService(redis=redis_client, supabase=supabase)
+        # Use a synthetic user ID for health check — checks global Redis key
+        return await asyncio.wait_for(
+            svc.is_active("health-check"),
+            timeout=2.0,
+        )
+    except Exception:
+        return True  # fail-safe
+
+
+async def _ping_kill_switch() -> bool:
+    """Return True if the kill switch is active (trading halted)."""
+    try:
+        import redis.asyncio as aioredis
+        from src.services.supabase_service import get_supabase_client
+        from src.trading.kill_switch import KillSwitchService
+
+        redis_client = aioredis.from_url(
+            settings.redis_url,
+            encoding="utf-8",
+            decode_responses=False,
+            socket_connect_timeout=2,
+            socket_timeout=2,
+        )
+        supabase = await get_supabase_client()
+        svc = KillSwitchService(redis=redis_client, supabase=supabase)
+        return await asyncio.wait_for(
+            svc.is_halted("health-check"),
+            timeout=2.0,
+        )
+    except Exception:
+        return True  # fail-safe
+
+
+async def _ping_tradier() -> str:
+    """Ping Tradier's clock endpoint (no auth needed, confirms connectivity)."""
+    try:
+        import httpx
+        tradier_key = getattr(settings, "tradier_api_key", "")
+        if not tradier_key:
+            return "error"
+        base = "https://sandbox.tradier.com" if getattr(settings, "tradier_sandbox", True) else "https://api.tradier.com"
+        async with httpx.AsyncClient(timeout=3.0) as client:
+            resp = await client.get(
+                f"{base}/v1/markets/clock",
+                headers={"Authorization": f"Bearer {tradier_key}", "Accept": "application/json"},
+            )
+            return "ok" if resp.status_code < 400 else "error"
+    except Exception:
+        return "error"
+
+
+async def _ping_alpaca() -> str:
+    """Ping Alpaca paper account endpoint to confirm credentials and connectivity."""
+    try:
+        import httpx
+        key = getattr(settings, "alpaca_api_key", "")
+        secret = getattr(settings, "alpaca_api_secret", "")
+        if not key or not secret:
+            return "error"
+        async with httpx.AsyncClient(timeout=3.0) as client:
+            resp = await client.get(
+                "https://paper-api.alpaca.markets/v2/account",
+                headers={"APCA-API-KEY-ID": key, "APCA-API-SECRET-KEY": secret},
+            )
+            return "ok" if resp.status_code == 200 else "error"
+    except Exception:
+        return "error"

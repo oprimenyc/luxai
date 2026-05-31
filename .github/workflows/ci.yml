@@ -97,8 +97,8 @@ jobs:
       - name: Type check (mypy)
         run: mypy src
 
-      - name: Tests
-        run: pytest --cov=src --cov-report=xml -q
+      - name: Tests (unit + safety invariants)
+        run: pytest tests/ --cov=src --cov-report=xml -v --tb=short
         env:
           SUPABASE_URL: https://example.supabase.co
           SUPABASE_ANON_KEY: test-key

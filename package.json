@@ -3,13 +3,13 @@
   "version": "0.0.0",
   "license": "MIT",
   "scripts": {
-    "preinstall": "sh -c 'rm -f package-lock.json yarn.lock; case \"$npm_config_user_agent\" in pnpm/*) ;; *) echo \"Use pnpm instead\" >&2; exit 1 ;; esac'",
     "build": "pnpm run typecheck && pnpm -r --if-present run build",
     "typecheck:libs": "tsc --build",
-    "typecheck": "pnpm run typecheck:libs && pnpm -r --filter \"./artifacts/**\" --filter \"./apps/**\" --filter \"./packages/**\" --filter \"./scripts\" --if-present run typecheck",
+    "typecheck": "pnpm run typecheck:libs && pnpm -r --filter \"./apps/**\" --filter \"./packages/**\" --filter \"./scripts\" --if-present run typecheck",
     "lint": "eslint .",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
+    "clean": "rimraf \"./**/.next\" \"./**/dist\" \"./**/__pycache__\" \"./**/*.pyc\" \"./**/.mypy_cache\" \"./**/.ruff_cache\" \"./**/*.tsbuildinfo\"",
     "prepare": "husky"
   },
   "private": true,
@@ -17,7 +17,9 @@
     "@commitlint/cli": "^19.8.0",
     "@commitlint/config-conventional": "^19.8.0",
     "@eslint/js": "^9.26.0",
+    "@luxai/config": "workspace:*",
     "eslint": "^9.26.0",
+    "rimraf": "^5.0.5",
     "eslint-plugin-react": "^7.37.5",
     "eslint-plugin-react-hooks": "^5.2.0",
     "eslint-plugin-unicorn": "^58.0.0",
@@ -30,7 +32,6 @@
   },
   "lint-staged": {
     "*.{ts,tsx,js,jsx,mjs,cjs}": [
-      "eslint --fix",
       "prettier --write"
     ],
     "*.{json,md,yaml,yml,css}": [

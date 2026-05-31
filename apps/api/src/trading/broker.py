@@ -76,6 +76,11 @@ class BrokerABC(ABC):
         ...
 
     @abstractmethod
+    async def subscribe_quotes(self, symbols: list[str], callback: Any) -> None:
+        """Subscribe to real-time quotes via WebSocket."""
+        ...
+
+    @abstractmethod
     async def get_options_chain(
         self,
         underlying: str,

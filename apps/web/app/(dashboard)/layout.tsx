@@ -12,14 +12,17 @@ import {
   LayoutDashboard,
   LineChart,
   LogOut,
+  Menu,
   Settings,
   Shield,
+  ScanSearch,
   Zap,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { type ReactNode, useState } from "react";
 import { CommandPalette, useCommandPalette } from "@/components/command/command-palette";
+import { ShadowBanner } from "@/components/ShadowBanner";
 import { cn } from "@/lib/utils";
 
 const NAV_ITEMS = [
@@ -31,6 +34,7 @@ const NAV_ITEMS = [
   { href: "/workflows", label: "Workflows", icon: GitBranch, section: "automate" },
   { href: "/governance", label: "Governance", icon: Shield, section: "automate" },
   { href: "/trading", label: "Trading", icon: LineChart, section: "automate", badge: "paper" },
+  { href: "/workbench", label: "Workbench", icon: ScanSearch, section: "automate", badge: "beta" },
   { href: "/settings", label: "Settings", icon: Settings, section: "system" },
 ];
 
@@ -41,22 +45,14 @@ const SECTION_LABELS: Record<string, string> = {
   system: "System",
 };
 
-function NavItem({
-  item,
-  active,
-}: {
-  item: (typeof NAV_ITEMS)[number];
-  active: boolean;
-}) {
+function NavItem({ item, active }: { item: (typeof NAV_ITEMS)[number]; active: boolean }) {
   const Icon = item.icon;
   return (
     <Link
       href={item.href}
       className={cn(
         "group relative flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-all duration-150",
-        active
-          ? "bg-white/10 text-white"
-          : "text-zinc-500 hover:bg-white/5 hover:text-zinc-300",
+        active ? "bg-white/10 text-white" : "text-zinc-500 hover:bg-white/5 hover:text-zinc-300",
       )}
     >
       {active && (
@@ -66,11 +62,16 @@ function NavItem({
           transition={{ type: "spring", stiffness: 400, damping: 30 }}
         />
       )}
-      <Icon className={cn("h-4 w-4 shrink-0 transition-colors", active ? "text-white" : "text-zinc-600 group-hover:text-zinc-400")} />
+      <Icon
+        className={cn(
+          "h-4 w-4 shrink-0 transition-colors",
+          active ? "text-white" : "text-zinc-600 group-hover:text-zinc-400",
+        )}
+      />
       <span className="flex-1 font-medium">{item.label}</span>
       {item.badge && (
         <span className="flex items-center gap-1 rounded-full bg-emerald-500/20 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-widest text-emerald-400">
-          <span className="h-1 w-1 rounded-full bg-emerald-400 animate-pulse" />
+          <span className="h-1 w-1 animate-pulse rounded-full bg-emerald-400" />
           {item.badge}
         </span>
       )}
@@ -94,11 +95,19 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
       {/* Command palette */}
       <CommandPalette open={open} onClose={onClose} />
 
+      {/* Mobile overlay */}
+      {sidebarOpen && (
+        <div
+          className="fixed inset-0 z-40 bg-black/50 md:hidden"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
+
       {/* Sidebar */}
       <aside
         className={cn(
-          "flex flex-col border-r border-white/5 bg-zinc-950 transition-all duration-300",
-          sidebarOpen ? "w-56" : "w-16",
+          "fixed inset-y-0 left-0 z-50 flex flex-col border-r border-white/5 bg-zinc-950 transition-all duration-300 md:relative",
+          sidebarOpen ? "w-56 translate-x-0" : "-translate-x-full md:w-16 md:translate-x-0",
         )}
       >
         {/* Wordmark */}
@@ -115,6 +124,13 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
               LuxAI
             </motion.span>
           )}
+          {/* Mobile close button */}
+          <button
+            className="ml-auto p-1 text-zinc-500 md:hidden"
+            onClick={() => setSidebarOpen(false)}
+          >
+            <ChevronRight className="h-4 w-4 rotate-180" />
+          </button>
         </div>
 
         {/* Command palette trigger */}
@@ -125,12 +141,14 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
           >
             <Command className="h-3.5 w-3.5" />
             <span className="flex-1 text-left">Search…</span>
-            <kbd className="rounded border border-white/10 bg-white/5 px-1 font-mono text-[9px]">⌘K</kbd>
+            <kbd className="rounded border border-white/10 bg-white/5 px-1 font-mono text-[9px]">
+              ⌘K
+            </kbd>
           </button>
         )}
 
         {/* Nav */}
-        <nav className="flex-1 overflow-y-auto p-3 space-y-5">
+        <nav className="flex-1 space-y-5 overflow-y-auto p-3">
           {grouped.map(({ key, label, items }) => (
             <div key={key}>
               {sidebarOpen && (
@@ -141,7 +159,10 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
               <ul className="space-y-0.5">
                 {items.map((item) => (
                   <li key={item.href}>
-                    <NavItem item={item} active={pathname === item.href || pathname.startsWith(item.href + "/")} />
+                    <NavItem
+                      item={item}
+                      active={pathname === item.href || pathname.startsWith(item.href + "/")}
+                    />
                   </li>
                 ))}
               </ul>
@@ -161,12 +182,18 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
       {/* Main content */}
       <div className="flex flex-1 flex-col overflow-hidden">
         {/* Topbar */}
-        <header className="flex h-14 shrink-0 items-center justify-between border-b border-white/5 bg-zinc-950 px-6">
+        <header className="flex h-14 shrink-0 items-center justify-between border-b border-white/5 bg-zinc-950 px-4 md:px-6">
           <div className="flex items-center gap-3">
+            <button
+              className="-ml-1 p-1 text-zinc-400 hover:text-white md:hidden"
+              onClick={() => setSidebarOpen(true)}
+            >
+              <Menu className="h-5 w-5" />
+            </button>
             {/* Breadcrumb */}
-            <span className="text-xs text-zinc-600">LuxAI</span>
-            <ChevronRight className="h-3.5 w-3.5 text-zinc-800" />
-            <span className="text-xs font-medium text-zinc-300 capitalize">
+            <span className="hidden text-xs text-zinc-600 md:inline">LuxAI</span>
+            <ChevronRight className="hidden h-3.5 w-3.5 text-zinc-800 md:inline" />
+            <span className="text-xs font-medium capitalize text-zinc-300">
               {pathname.split("/").filter(Boolean).at(-1) ?? "Dashboard"}
             </span>
           </div>
@@ -174,7 +201,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
           <div className="flex items-center gap-3">
             {/* Live indicator */}
             <div className="flex items-center gap-1.5 rounded-full border border-emerald-900/40 bg-emerald-950/30 px-2.5 py-1">
-              <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
+              <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-400" />
               <span className="text-[10px] font-medium text-emerald-400">System Nominal</span>
             </div>
 
@@ -187,6 +214,9 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
             </button>
           </div>
         </header>
+
+        {/* Shadow mode banner — persistent, undismissable, sits between topbar and content */}
+        <ShadowBanner />
 
         {/* Page content */}
         <main className="flex-1 overflow-y-auto bg-[#0a0a0a] p-6">

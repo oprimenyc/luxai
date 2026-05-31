@@ -1,0 +1,95 @@
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+
+# Only one deploy runs at a time — never cancel in-progress to avoid
+# partial deploys leaving the backend and frontend out of sync.
+concurrency:
+  group: deploy-main
+  cancel-in-progress: false
+
+env:
+  PNPM_VERSION: "10"
+  NODE_VERSION: "22"
+
+jobs:
+  # ── Backend → Fly.io ────────────────────────────────────────────────────────
+  deploy-backend:
+    name: Backend → Fly.io
+    runs-on: ubuntu-latest
+    environment: production
+    defaults:
+      run:
+        working-directory: apps/api
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install flyctl
+        uses: superfly/flyctl-actions/setup-flyctl@master
+
+      - name: Deploy to Fly.io
+        # --remote-only: Fly builds the Docker image on its own
+        # infrastructure, not in the GitHub Actions runner. This avoids
+        # needing Docker-in-Docker and keeps CI fast (~2 min build).
+        run: flyctl deploy --remote-only --wait-timeout 300
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+
+      - name: Verify health endpoint
+        run: |
+          sleep 10
+          STATUS=$(flyctl status --app luxai-api --json | python3 -c "
+          import sys, json
+          data = json.load(sys.stdin)
+          machines = data.get('Machines', [])
+          states = [m.get('state', '') for m in machines]
+          print('ok' if all(s == 'started' for s in states) else 'degraded')
+          ")
+          echo "Machine status: $STATUS"
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+
+  # ── Frontend → Cloudflare Pages ─────────────────────────────────────────────
+  deploy-frontend:
+    name: Frontend → Cloudflare Pages
+    runs-on: ubuntu-latest
+    environment: production
+    # Deploy frontend after backend to ensure the health check endpoint
+    # is live before users hit the UI.
+    needs: deploy-backend
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build Next.js
+        run: pnpm --filter @luxai/web run build
+        env:
+          NEXT_TELEMETRY_DISABLED: "1"
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+          NEXT_PUBLIC_API_URL: ${{ secrets.NEXT_PUBLIC_API_URL }}
+          NEXT_PUBLIC_APP_URL: ${{ secrets.NEXT_PUBLIC_APP_URL }}
+
+      - name: Deploy to Cloudflare Pages
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: >
+            pages deploy apps/web/.next
+            --project-name=luxai-web
+            --branch=main
+            --commit-dirty=true

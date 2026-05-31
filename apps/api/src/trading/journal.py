@@ -4,11 +4,13 @@ from __future__ import annotations
 
 import asyncio
 from datetime import UTC, datetime
-from typing import Any
+from typing import TYPE_CHECKING, Any
 from uuid import UUID
 
 import structlog
-from supabase import AsyncClient
+
+if TYPE_CHECKING:
+    from supabase import AsyncClient
 
 from src.trading.models import (
     ExecutionMode,
@@ -37,13 +39,17 @@ class ExecutionJournal:
 
     def __init__(
         self,
-        client: AsyncClient,
+        client: Any,  # supabase.AsyncClient — typed via TYPE_CHECKING only
         execution_mode: ExecutionMode = ExecutionMode.PAPER,
     ) -> None:
         self._client = client
         self._execution_mode = execution_mode
         self._buffer: list[JournalEntry] = []
         self._lock = asyncio.Lock()
+        
+        # Bounded persistence queue
+        self._queue: asyncio.Queue[JournalEntry] = asyncio.Queue(maxsize=1000)
+        self._worker_task = asyncio.create_task(self._persistence_worker(), name="journal_persistence_worker")
 
     # ── Write API ────────────────────────────────────────────────────────────
 
@@ -139,6 +145,28 @@ class ExecutionJournal:
             payload=payload,
         ))
 
+    async def close(self) -> None:
+        """
+        Drain the persistence queue then shut down the worker.
+
+        Waits up to 30 seconds for queued entries to be written to Supabase.
+        Called automatically by TradingEngine.stop() to prevent audit-log loss.
+        """
+        try:
+            await asyncio.wait_for(self._queue.join(), timeout=30.0)
+        except asyncio.TimeoutError:
+            log.warning(
+                "journal_close_timeout",
+                remaining=self._queue.qsize(),
+            )
+        finally:
+            self._worker_task.cancel()
+            try:
+                await self._worker_task
+            except asyncio.CancelledError:
+                pass
+        log.info("journal_closed")
+
     # ── Read API ─────────────────────────────────────────────────────────────
 
     async def recent(self, limit: int = 100) -> list[JournalEntry]:
@@ -170,22 +198,55 @@ class ExecutionJournal:
             mode=self._execution_mode,
         )
 
-        # Persist async — do not block the caller
-        asyncio.create_task(
-            self._persist(entry),
-            name=f"journal_persist:{entry.id}",
-        )
+        try:
+            self._queue.put_nowait(entry)
+        except asyncio.QueueFull:
+            log.critical("journal_persistence_queue_full", entry_id=str(entry.id))
+            from src.events.bus import event_bus
+            from src.events.models import BaseEvent, EventType, EventSeverity
+            asyncio.create_task(
+                event_bus.publish(BaseEvent(
+                    type=EventType.SYSTEM_ERROR,
+                    severity=EventSeverity.CRITICAL,
+                    payload={"error": "journal_queue_full", "entry_id": str(entry.id)}
+                ))
+            )
+
+    async def _persistence_worker(self) -> None:
+        while True:
+            try:
+                entry = await self._queue.get()
+                await self._persist_with_retry(entry)
+                self._queue.task_done()
+            except asyncio.CancelledError:
+                break
+            except Exception:
+                log.exception("journal_worker_error")
+                await asyncio.sleep(1.0)
+
+    async def _persist_with_retry(self, entry: JournalEntry) -> None:
+        max_retries = 5
+        base_delay = 1.0
+        
+        for attempt in range(max_retries):
+            try:
+                await self._persist(entry)
+                return
+            except Exception:
+                if attempt == max_retries - 1:
+                    log.exception("journal_persist_failed_permanent", entry_id=str(entry.id))
+                    return
+                delay = min(base_delay * (2 ** attempt), 30.0)
+                log.warning("journal_persist_retry", entry_id=str(entry.id), attempt=attempt+1, delay=delay)
+                await asyncio.sleep(delay)
 
     async def _persist(self, entry: JournalEntry) -> None:
-        try:
-            await self._client.table("trade_journal").insert({
-                "id": str(entry.id),
-                "entry_type": entry.entry_type,
-                "order_id": str(entry.order_id) if entry.order_id else None,
-                "symbol": entry.symbol,
-                "payload": entry.payload,
-                "execution_mode": entry.execution_mode,
-                "recorded_at": entry.recorded_at.isoformat(),
-            }).execute()
-        except Exception:
-            log.exception("journal_persist_failed", entry_id=str(entry.id))
+        await self._client.table("trade_journal").insert({
+            "id": str(entry.id),
+            "entry_type": entry.entry_type,
+            "order_id": str(entry.order_id) if entry.order_id else None,
+            "symbol": entry.symbol,
+            "payload": entry.payload,
+            "execution_mode": entry.execution_mode,
+            "recorded_at": entry.recorded_at.isoformat(),
+        }).execute()

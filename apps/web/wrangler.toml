@@ -1,0 +1,21 @@
+# Cloudflare Pages configuration for the LuxAI Next.js frontend.
+# Docs: https://developers.cloudflare.com/pages/configuration/wrangler-configuration/
+#
+# Deploy with:
+#   wrangler pages deploy .next --project-name luxai-web
+#
+# Or via Git integration in the Cloudflare dashboard:
+#   Build command:        pnpm --filter @luxai/web run build
+#   Build output dir:     apps/web/.next
+#   Root directory:       (leave blank — monorepo root)
+
+name = "luxai-web"
+compatibility_date = "2024-09-23"
+pages_build_output_dir = ".next"
+
+# Public vars (safe to commit — no secrets)
+# Secrets (NEXT_PUBLIC_SUPABASE_ANON_KEY, etc.) are set in the Cloudflare
+# dashboard under Settings → Environment Variables.
+[vars]
+NEXT_TELEMETRY_DISABLED = "1"
+NODE_ENV = "production"

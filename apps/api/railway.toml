@@ -1,0 +1,3 @@
+# DEPRECATED — this project uses Fly.io, not Railway.
+# See apps/api/fly.toml for the current deployment configuration.
+# This file is kept only to prevent broken references in old documentation.

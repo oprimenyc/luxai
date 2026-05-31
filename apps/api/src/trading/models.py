@@ -204,6 +204,7 @@ class OrderRequest(BaseModel):
     asset_class: AssetClass = AssetClass.EQUITY
     execution_mode: ExecutionMode = ExecutionMode.PAPER
     client_order_id: str | None = None
+    idempotency_key: str | None = None
     metadata: dict[str, Any] = Field(default_factory=dict)
 
     @field_validator("limit_price", "stop_price", mode="before")

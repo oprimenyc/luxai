@@ -91,8 +91,8 @@ function pnlColor(v: number) {
 
 function StatusBadge({ mode }: { mode: string }) {
   return (
-    <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-400 text-xs font-medium uppercase tracking-wider">
-      <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
+    <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-500/30 bg-amber-500/10 px-2.5 py-0.5 text-xs font-medium uppercase tracking-wider text-amber-400">
+      <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-amber-400" />
       {mode}
     </span>
   );
@@ -116,12 +116,10 @@ function MetricCard({
         ? "text-red-400"
         : "text-white";
   return (
-    <div className="bg-zinc-900/60 border border-zinc-800/60 rounded-xl p-4">
-      <p className="text-zinc-500 text-xs font-medium uppercase tracking-widest mb-1">
-        {label}
-      </p>
+    <div className="rounded-xl border border-zinc-800/60 bg-zinc-900/60 p-4">
+      <p className="mb-1 text-xs font-medium uppercase tracking-widest text-zinc-500">{label}</p>
       <p className={`text-2xl font-light tabular-nums ${color}`}>{value}</p>
-      {sub && <p className="text-zinc-500 text-xs mt-0.5">{sub}</p>}
+      {sub && <p className="mt-0.5 text-xs text-zinc-500">{sub}</p>}
     </div>
   );
 }
@@ -144,7 +142,7 @@ function OrderForm({ onSuccess }: { onSuccess: () => void }) {
     try {
       const quote = await apiFetch<{ last: number }>(`/trading/quote/${symbol.toUpperCase()}`);
       const size = await apiFetch<{ suggested_qty: number }>(
-        `/trading/size?symbol=${symbol.toUpperCase()}&price=${quote.last}`
+        `/trading/size?symbol=${symbol.toUpperCase()}&price=${quote.last}`,
       );
       setSuggested(size.suggested_qty);
     } catch {
@@ -165,8 +163,7 @@ function OrderForm({ onSuccess }: { onSuccess: () => void }) {
         order_type: orderType,
       };
       if (orderType !== "market" && limitPrice) body.limit_price = parseFloat(limitPrice);
-      if (orderType === "stop" && stopPrice)
-        body.stop_price = parseFloat(stopPrice);
+      if (orderType === "stop" && stopPrice) body.stop_price = parseFloat(stopPrice);
 
       const order = await apiFetch<{ broker_order_id: string }>("/trading/orders", {
         method: "POST",
@@ -184,21 +181,21 @@ function OrderForm({ onSuccess }: { onSuccess: () => void }) {
   return (
     <form
       onSubmit={handleSubmit}
-      className="bg-zinc-900/60 border border-zinc-800/60 rounded-xl p-5 space-y-4"
+      className="space-y-4 rounded-xl border border-zinc-800/60 bg-zinc-900/60 p-5"
     >
       <div className="flex items-center justify-between">
-        <h3 className="text-sm font-medium text-zinc-300 tracking-wide">New Order</h3>
+        <h3 className="text-sm font-medium tracking-wide text-zinc-300">New Order</h3>
         <StatusBadge mode="paper" />
       </div>
 
       <div className="grid grid-cols-2 gap-3">
         <div className="col-span-2">
-          <label className="text-xs text-zinc-500 mb-1 block">Symbol</label>
+          <label className="mb-1 block text-xs text-zinc-500">Symbol</label>
           <div className="flex gap-2">
             <input
               value={symbol}
               onChange={(e) => setSymbol(e.target.value.toUpperCase())}
-              className="flex-1 bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-sm text-white uppercase focus:outline-none focus:border-zinc-500"
+              className="flex-1 rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm uppercase text-white focus:border-zinc-500 focus:outline-none"
               placeholder="SPY"
               maxLength={20}
               required
@@ -206,19 +203,15 @@ function OrderForm({ onSuccess }: { onSuccess: () => void }) {
             <button
               type="button"
               onClick={loadSuggestion}
-              className="px-3 py-2 text-xs text-zinc-400 bg-zinc-800 border border-zinc-700 rounded-lg hover:border-zinc-600 transition-colors"
+              className="rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-xs text-zinc-400 transition-colors hover:border-zinc-600"
             >
               Size
             </button>
           </div>
           {suggested !== null && (
-            <p className="text-xs text-amber-400 mt-1">
+            <p className="mt-1 text-xs text-amber-400">
               Suggested qty: {suggested}{" "}
-              <button
-                type="button"
-                className="underline"
-                onClick={() => setQty(String(suggested))}
-              >
+              <button type="button" className="underline" onClick={() => setQty(String(suggested))}>
                 use
               </button>
             </p>
@@ -226,8 +219,8 @@ function OrderForm({ onSuccess }: { onSuccess: () => void }) {
         </div>
 
         <div>
-          <label className="text-xs text-zinc-500 mb-1 block">Side</label>
-          <div className="flex rounded-lg overflow-hidden border border-zinc-700">
+          <label className="mb-1 block text-xs text-zinc-500">Side</label>
+          <div className="flex overflow-hidden rounded-lg border border-zinc-700">
             {(["buy", "sell"] as OrderSide[]).map((s) => (
               <button
                 key={s}
@@ -248,23 +241,23 @@ function OrderForm({ onSuccess }: { onSuccess: () => void }) {
         </div>
 
         <div>
-          <label className="text-xs text-zinc-500 mb-1 block">Quantity</label>
+          <label className="mb-1 block text-xs text-zinc-500">Quantity</label>
           <input
             type="number"
             value={qty}
             onChange={(e) => setQty(e.target.value)}
             min={1}
-            className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-zinc-500"
+            className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-white focus:border-zinc-500 focus:outline-none"
             required
           />
         </div>
 
         <div className="col-span-2">
-          <label className="text-xs text-zinc-500 mb-1 block">Order Type</label>
+          <label className="mb-1 block text-xs text-zinc-500">Order Type</label>
           <select
             value={orderType}
             onChange={(e) => setOrderType(e.target.value as OrderType)}
-            className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-zinc-500"
+            className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-white focus:border-zinc-500 focus:outline-none"
           >
             <option value="market">Market</option>
             <option value="limit">Limit</option>
@@ -274,13 +267,13 @@ function OrderForm({ onSuccess }: { onSuccess: () => void }) {
 
         {orderType === "limit" && (
           <div>
-            <label className="text-xs text-zinc-500 mb-1 block">Limit Price</label>
+            <label className="mb-1 block text-xs text-zinc-500">Limit Price</label>
             <input
               type="number"
               step="0.01"
               value={limitPrice}
               onChange={(e) => setLimitPrice(e.target.value)}
-              className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-zinc-500"
+              className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-white focus:border-zinc-500 focus:outline-none"
               placeholder="0.00"
             />
           </div>
@@ -288,13 +281,13 @@ function OrderForm({ onSuccess }: { onSuccess: () => void }) {
 
         {orderType === "stop" && (
           <div>
-            <label className="text-xs text-zinc-500 mb-1 block">Stop Price</label>
+            <label className="mb-1 block text-xs text-zinc-500">Stop Price</label>
             <input
               type="number"
               step="0.01"
               value={stopPrice}
               onChange={(e) => setStopPrice(e.target.value)}
-              className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-zinc-500"
+              className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-white focus:border-zinc-500 focus:outline-none"
               placeholder="0.00"
             />
           </div>
@@ -307,7 +300,7 @@ function OrderForm({ onSuccess }: { onSuccess: () => void }) {
             initial={{ opacity: 0, y: -4 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0 }}
-            className="text-xs text-red-400 bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2"
+            className="rounded-lg border border-red-500/20 bg-red-500/10 px-3 py-2 text-xs text-red-400"
           >
             {error}
           </motion.p>
@@ -317,7 +310,7 @@ function OrderForm({ onSuccess }: { onSuccess: () => void }) {
             initial={{ opacity: 0, y: -4 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0 }}
-            className="text-xs text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 rounded-lg px-3 py-2"
+            className="rounded-lg border border-emerald-500/20 bg-emerald-500/10 px-3 py-2 text-xs text-emerald-400"
           >
             {success}
           </motion.p>
@@ -327,7 +320,7 @@ function OrderForm({ onSuccess }: { onSuccess: () => void }) {
       <button
         type="submit"
         disabled={loading}
-        className="w-full py-2.5 rounded-lg bg-white text-zinc-900 text-sm font-medium hover:bg-zinc-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+        className="w-full rounded-lg bg-white py-2.5 text-sm font-medium text-zinc-900 transition-colors hover:bg-zinc-100 disabled:cursor-not-allowed disabled:opacity-40"
       >
         {loading ? "Submitting…" : "Submit Paper Order"}
       </button>
@@ -340,21 +333,19 @@ function OrderForm({ onSuccess }: { onSuccess: () => void }) {
 function PositionsTable({ positions }: { positions: Record<string, PositionData> }) {
   const rows = Object.entries(positions);
   if (rows.length === 0) {
-    return (
-      <div className="text-center py-10 text-zinc-600 text-sm">No open positions</div>
-    );
+    return <div className="py-10 text-center text-sm text-zinc-600">No open positions</div>;
   }
   return (
     <div className="overflow-x-auto">
       <table className="w-full text-sm">
         <thead>
-          <tr className="text-zinc-500 text-xs uppercase tracking-widest border-b border-zinc-800">
-            <th className="text-left py-2 pr-4 font-medium">Symbol</th>
-            <th className="text-right py-2 pr-4 font-medium">Qty</th>
-            <th className="text-right py-2 pr-4 font-medium">Avg Cost</th>
-            <th className="text-right py-2 pr-4 font-medium">Price</th>
-            <th className="text-right py-2 pr-4 font-medium">Mkt Value</th>
-            <th className="text-right py-2 font-medium">Unr. PnL</th>
+          <tr className="border-b border-zinc-800 text-xs uppercase tracking-widest text-zinc-500">
+            <th className="py-2 pr-4 text-left font-medium">Symbol</th>
+            <th className="py-2 pr-4 text-right font-medium">Qty</th>
+            <th className="py-2 pr-4 text-right font-medium">Avg Cost</th>
+            <th className="py-2 pr-4 text-right font-medium">Price</th>
+            <th className="py-2 pr-4 text-right font-medium">Mkt Value</th>
+            <th className="py-2 text-right font-medium">Unr. PnL</th>
           </tr>
         </thead>
         <tbody>
@@ -387,21 +378,19 @@ function PositionsTable({ positions }: { positions: Record<string, PositionData>
 
 function PnLTable({ records }: { records: PnLRecord[] }) {
   if (records.length === 0) {
-    return (
-      <div className="text-center py-10 text-zinc-600 text-sm">No closed trades yet</div>
-    );
+    return <div className="py-10 text-center text-sm text-zinc-600">No closed trades yet</div>;
   }
   return (
     <div className="overflow-x-auto">
       <table className="w-full text-sm">
         <thead>
-          <tr className="text-zinc-500 text-xs uppercase tracking-widest border-b border-zinc-800">
-            <th className="text-left py-2 pr-4 font-medium">Symbol</th>
-            <th className="text-right py-2 pr-4 font-medium">Side</th>
-            <th className="text-right py-2 pr-4 font-medium">Qty</th>
-            <th className="text-right py-2 pr-4 font-medium">Entry</th>
-            <th className="text-right py-2 pr-4 font-medium">Exit</th>
-            <th className="text-right py-2 font-medium">PnL</th>
+          <tr className="border-b border-zinc-800 text-xs uppercase tracking-widest text-zinc-500">
+            <th className="py-2 pr-4 text-left font-medium">Symbol</th>
+            <th className="py-2 pr-4 text-right font-medium">Side</th>
+            <th className="py-2 pr-4 text-right font-medium">Qty</th>
+            <th className="py-2 pr-4 text-right font-medium">Entry</th>
+            <th className="py-2 pr-4 text-right font-medium">Exit</th>
+            <th className="py-2 text-right font-medium">PnL</th>
           </tr>
         </thead>
         <tbody>
@@ -410,7 +399,7 @@ function PnLTable({ records }: { records: PnLRecord[] }) {
               <td className="py-2.5 pr-4 font-medium text-white">{r.symbol}</td>
               <td className="py-2.5 pr-4 text-right">
                 <span
-                  className={`text-xs font-medium px-2 py-0.5 rounded-full ${
+                  className={`rounded-full px-2 py-0.5 text-xs font-medium ${
                     r.side === "long"
                       ? "bg-emerald-500/10 text-emerald-400"
                       : "bg-red-500/10 text-red-400"
@@ -426,7 +415,9 @@ function PnLTable({ records }: { records: PnLRecord[] }) {
               <td className="py-2.5 pr-4 text-right tabular-nums text-zinc-400">
                 ${fmt(r.exit_price, 4)}
               </td>
-              <td className={`py-2.5 text-right tabular-nums font-medium ${pnlColor(r.realized_pnl)}`}>
+              <td
+                className={`py-2.5 text-right font-medium tabular-nums ${pnlColor(r.realized_pnl)}`}
+              >
                 {r.realized_pnl >= 0 ? "+" : ""}${fmt(r.realized_pnl)}{" "}
                 <span className="text-xs opacity-70">{fmtPct(r.realized_pnl_pct)}</span>
               </td>
@@ -442,7 +433,7 @@ function PnLTable({ records }: { records: PnLRecord[] }) {
 
 function JournalTable({ entries }: { entries: JournalEntry[] }) {
   if (entries.length === 0) {
-    return <div className="text-center py-10 text-zinc-600 text-sm">No journal entries</div>;
+    return <div className="py-10 text-center text-sm text-zinc-600">No journal entries</div>;
   }
 
   const typeColor: Record<string, string> = {
@@ -460,15 +451,15 @@ function JournalTable({ entries }: { entries: JournalEntry[] }) {
       {entries.map((e) => (
         <div
           key={e.id}
-          className="flex items-start gap-3 px-3 py-2.5 rounded-lg hover:bg-zinc-800/30 transition-colors"
+          className="flex items-start gap-3 rounded-lg px-3 py-2.5 transition-colors hover:bg-zinc-800/30"
         >
-          <span className={`text-xs font-mono mt-0.5 ${typeColor[e.entry_type] ?? "text-zinc-500"}`}>
+          <span
+            className={`mt-0.5 font-mono text-xs ${typeColor[e.entry_type] ?? "text-zinc-500"}`}
+          >
             {e.entry_type.replace(/_/g, " ").toUpperCase()}
           </span>
-          {e.symbol && (
-            <span className="text-xs text-zinc-300 font-medium">{e.symbol}</span>
-          )}
-          <span className="text-xs text-zinc-600 ml-auto tabular-nums">
+          {e.symbol && <span className="text-xs font-medium text-zinc-300">{e.symbol}</span>}
+          <span className="ml-auto text-xs tabular-nums text-zinc-600">
             {new Date(e.recorded_at).toLocaleTimeString()}
           </span>
         </div>
@@ -486,19 +477,42 @@ export function TradingClient() {
   const [journal, setJournal] = useState<JournalEntry[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [halting, setHalting] = useState(false);
+  const [telemetry, setTelemetry] = useState<any>(null);
+
+  const handleEmergencyHalt = async () => {
+    if (
+      !confirm(
+        "Are you sure? This will permanently lock the trading engine and cancel all pending orders.",
+      )
+    )
+      return;
+    setHalting(true);
+    try {
+      await apiFetch("/trading/emergency-halt", { method: "POST" });
+      setError("EMERGENCY HALT ACTIVATED: Trading engine is locked.");
+      void load();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to execute emergency halt.");
+    } finally {
+      setHalting(false);
+    }
+  };
 
   const load = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      const [p, pnl, j] = await Promise.all([
+      const [p, pnl, j, stat] = await Promise.all([
         apiFetch<Portfolio>("/trading/portfolio"),
         apiFetch<PnLRecord[]>("/trading/pnl?limit=50"),
         apiFetch<JournalEntry[]>("/trading/journal?limit=50"),
+        apiFetch<any>("/trading/status"),
       ]);
       setPortfolio(p);
       setPnlRecords(pnl);
       setJournal(j);
+      if (stat.telemetry) setTelemetry(stat.telemetry);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load trading data");
     } finally {
@@ -519,34 +533,49 @@ export function TradingClient() {
   ];
 
   return (
-    <div className="min-h-screen bg-zinc-950 text-white p-6 space-y-6">
+    <div className="min-h-screen space-y-6 bg-zinc-950 p-6 text-white">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-xl font-light tracking-wide text-white">Paper Trading</h1>
-          <p className="text-zinc-500 text-sm mt-0.5">
-            Deterministic simulation — no live orders
-          </p>
+          <p className="mt-0.5 text-sm text-zinc-500">Deterministic simulation — no live orders</p>
         </div>
         <div className="flex items-center gap-3">
           <StatusBadge mode="paper" />
           <button
             onClick={() => void load()}
-            className="text-xs text-zinc-500 hover:text-zinc-300 transition-colors"
+            className="text-xs text-zinc-500 transition-colors hover:text-zinc-300"
           >
             Refresh
+          </button>
+          <button
+            onClick={handleEmergencyHalt}
+            disabled={halting}
+            className="ml-2 rounded border border-red-500/30 bg-red-500/20 px-3 py-1.5 text-xs font-bold uppercase tracking-widest text-red-500 transition-colors hover:bg-red-500/30 disabled:opacity-50"
+          >
+            {halting ? "HALTING..." : "EMERGENCY HALT"}
           </button>
         </div>
       </div>
 
       {/* Error state */}
       <AnimatePresence>
+        {telemetry?.degraded_risk_mode && (
+          <motion.div
+            initial={{ opacity: 0, y: -8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0 }}
+            className="rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm font-medium text-red-400"
+          >
+            ⚠️ DEGRADED RISK MODE: Market data quotes are delayed. New entries blocked.
+          </motion.div>
+        )}
         {error && (
           <motion.div
             initial={{ opacity: 0, y: -8 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0 }}
-            className="bg-amber-500/10 border border-amber-500/20 rounded-xl px-4 py-3 text-sm text-amber-400"
+            className="rounded-xl border border-amber-500/20 bg-amber-500/10 px-4 py-3 text-sm text-amber-400"
           >
             {error.includes("not configured") ? (
               <>
@@ -561,7 +590,7 @@ export function TradingClient() {
         )}
       </AnimatePresence>
 
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 gap-6 xl:grid-cols-3">
         {/* Left: Metrics + Order Form */}
         <div className="space-y-4">
           {portfolio ? (
@@ -570,24 +599,29 @@ export function TradingClient() {
               animate={{ opacity: 1 }}
               className="grid grid-cols-2 gap-3"
             >
-              <MetricCard
-                label="Equity"
-                value={`$${fmt(portfolio.equity)}`}
-                sub="Paper account"
-              />
-              <MetricCard
-                label="Cash"
-                value={`$${fmt(portfolio.cash)}`}
-              />
+              <MetricCard label="Equity" value={`$${fmt(portfolio.equity)}`} sub="Paper account" />
+              <MetricCard label="Cash" value={`$${fmt(portfolio.cash)}`} />
               <MetricCard
                 label="Total PnL"
                 value={`${portfolio.total_pnl >= 0 ? "+" : ""}$${fmt(Math.abs(portfolio.total_pnl))}`}
-                accent={portfolio.total_pnl > 0 ? "positive" : portfolio.total_pnl < 0 ? "negative" : "neutral"}
+                accent={
+                  portfolio.total_pnl > 0
+                    ? "positive"
+                    : portfolio.total_pnl < 0
+                      ? "negative"
+                      : "neutral"
+                }
               />
               <MetricCard
                 label="Realized"
                 value={`${portfolio.realized_pnl >= 0 ? "+" : ""}$${fmt(Math.abs(portfolio.realized_pnl))}`}
-                accent={portfolio.realized_pnl > 0 ? "positive" : portfolio.realized_pnl < 0 ? "negative" : "neutral"}
+                accent={
+                  portfolio.realized_pnl > 0
+                    ? "positive"
+                    : portfolio.realized_pnl < 0
+                      ? "negative"
+                      : "neutral"
+                }
               />
             </motion.div>
           ) : (
@@ -595,7 +629,7 @@ export function TradingClient() {
               {Array.from({ length: 4 }).map((_, i) => (
                 <div
                   key={i}
-                  className="h-20 bg-zinc-900/60 border border-zinc-800/60 rounded-xl animate-pulse"
+                  className="h-20 animate-pulse rounded-xl border border-zinc-800/60 bg-zinc-900/60"
                 />
               ))}
             </div>
@@ -605,7 +639,7 @@ export function TradingClient() {
         </div>
 
         {/* Right: Tabs */}
-        <div className="xl:col-span-2 bg-zinc-900/40 border border-zinc-800/60 rounded-xl">
+        <div className="rounded-xl border border-zinc-800/60 bg-zinc-900/40 xl:col-span-2">
           <div className="flex border-b border-zinc-800/60">
             {tabs.map((t) => (
               <button
@@ -613,15 +647,13 @@ export function TradingClient() {
                 onClick={() => setTab(t.id)}
                 className={`px-5 py-3 text-sm transition-colors ${
                   tab === t.id
-                    ? "text-white border-b border-white"
+                    ? "border-b border-white text-white"
                     : "text-zinc-500 hover:text-zinc-300"
                 }`}
               >
                 {t.label}
                 {t.id === "portfolio" && portfolio && (
-                  <span className="ml-2 text-xs text-zinc-600">
-                    {portfolio.position_count}
-                  </span>
+                  <span className="ml-2 text-xs text-zinc-600">{portfolio.position_count}</span>
                 )}
               </button>
             ))}
@@ -638,7 +670,7 @@ export function TradingClient() {
                   className="space-y-2 py-4"
                 >
                   {Array.from({ length: 4 }).map((_, i) => (
-                    <div key={i} className="h-8 bg-zinc-800/50 rounded animate-pulse" />
+                    <div key={i} className="h-8 animate-pulse rounded bg-zinc-800/50" />
                   ))}
                 </motion.div>
               ) : tab === "portfolio" ? (
