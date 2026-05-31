@@ -1,6 +1,6 @@
 "use client";
 
-import { AnimatePresence, motion } from "framer-motion";
+import { motion } from "framer-motion";
 import { useMemo } from "react";
 import type { LuxEvent } from "@/lib/events/schemas";
 import { useGraphNodes } from "@/lib/websocket/hooks";
@@ -16,15 +16,6 @@ const GRAPH_NODES = [
   { id: "executor", label: "Executor", color: "from-blue-600 to-blue-700" },
   { id: "critic", label: "Critic", color: "from-amber-600 to-amber-700" },
 ] as const;
-
-const EDGES = [
-  { from: "researcher", to: "executor" },
-  { from: "executor", to: "critic" },
-  { from: "critic", to: "executor", label: "retry", dashed: true },
-  { from: "critic", to: "END", label: "pass" },
-] as const;
-
-type NodeId = (typeof GRAPH_NODES)[number]["id"] | "END";
 
 function NodeCard({
   node,
@@ -49,7 +40,10 @@ function NodeCard({
       {/* Active glow */}
       {isActive && (
         <motion.div
-          className={cn("absolute inset-0 rounded-xl blur-lg opacity-50 bg-gradient-to-br", node.color)}
+          className={cn(
+            "absolute inset-0 rounded-xl bg-gradient-to-br opacity-50 blur-lg",
+            node.color,
+          )}
           animate={{ opacity: [0.3, 0.6, 0.3] }}
           transition={{ duration: 1.5, repeat: Infinity }}
         />
@@ -68,8 +62,8 @@ function NodeCard({
         {/* Status indicator */}
         <div
           className={cn(
-            "absolute top-2 right-2 h-2 w-2 rounded-full",
-            isActive ? "bg-white animate-pulse" : isCompleted ? "bg-emerald-400" : "bg-zinc-700",
+            "absolute right-2 top-2 h-2 w-2 rounded-full",
+            isActive ? "animate-pulse bg-white" : isCompleted ? "bg-emerald-400" : "bg-zinc-700",
           )}
         />
 
@@ -109,11 +103,13 @@ function EndNode({ reached }: { reached: boolean }) {
         className={cn(
           "flex h-20 w-32 items-center justify-center rounded-xl border transition-all duration-500",
           reached
-            ? "border-emerald-500/50 bg-emerald-950/40 shadow-emerald-900/30 shadow-lg"
+            ? "border-emerald-500/50 bg-emerald-950/40 shadow-lg shadow-emerald-900/30"
             : "border-white/5 bg-white/[0.02]",
         )}
       >
-        <span className={cn("text-sm font-semibold", reached ? "text-emerald-300" : "text-zinc-700")}>
+        <span
+          className={cn("text-sm font-semibold", reached ? "text-emerald-300" : "text-zinc-700")}
+        >
           END
         </span>
       </div>
@@ -142,7 +138,7 @@ function Arrow({ dashed, label }: { dashed?: boolean; label?: string }) {
           markerEnd="url(#arrowhead)"
         />
       </svg>
-      {label && <span className="text-[9px] text-zinc-600 -mt-1">{label}</span>}
+      {label && <span className="-mt-1 text-[9px] text-zinc-600">{label}</span>}
     </div>
   );
 }
@@ -153,11 +149,11 @@ export function OrchestrationGraph({ events, className }: OrchestrationGraphProp
   const activeNode = useMemo(() => {
     const entered = events.filter((e) => e.type === "graph.node_entered");
     const exited = new Set(
-      events.filter((e) => e.type === "graph.node_exited").map((e) => e.payload["node_name"]),
+      events.filter((e) => e.type === "graph.node_exited").map((e) => e.payload.node_name),
     );
     const lastEntered = entered.at(-1);
-    if (lastEntered && !exited.has(lastEntered.payload["node_name"])) {
-      return lastEntered.payload["node_name"] as string;
+    if (lastEntered && !exited.has(lastEntered.payload.node_name)) {
+      return lastEntered.payload.node_name as string;
     }
     return null;
   }, [events]);
@@ -167,7 +163,7 @@ export function OrchestrationGraph({ events, className }: OrchestrationGraphProp
       new Set(
         events
           .filter((e) => e.type === "graph.node_exited")
-          .map((e) => e.payload["node_name"] as string),
+          .map((e) => e.payload.node_name as string),
       ),
     [events],
   );
@@ -186,7 +182,16 @@ export function OrchestrationGraph({ events, className }: OrchestrationGraphProp
       <div className="mb-5 flex items-center justify-between">
         <span className="text-sm font-semibold text-white">Orchestration Graph</span>
         <div className="flex items-center gap-2 text-xs text-zinc-500">
-          <div className={cn("h-1.5 w-1.5 rounded-full", activeNode ? "bg-white animate-pulse" : isCompleted ? "bg-emerald-400" : "bg-zinc-700")} />
+          <div
+            className={cn(
+              "h-1.5 w-1.5 rounded-full",
+              activeNode
+                ? "animate-pulse bg-white"
+                : isCompleted
+                  ? "bg-emerald-400"
+                  : "bg-zinc-700",
+            )}
+          />
           {activeNode ? `Running: ${activeNode}` : isCompleted ? "Completed" : "Idle"}
         </div>
       </div>
@@ -209,8 +214,8 @@ export function OrchestrationGraph({ events, className }: OrchestrationGraphProp
 
       {/* Retry edge indicator */}
       {events.some((e) => e.type === "telemetry.retry") && (
-        <div className="mt-4 flex items-center gap-2 rounded-md bg-amber-950/30 border border-amber-500/20 px-3 py-2">
-          <div className="h-1.5 w-1.5 rounded-full bg-amber-400 animate-pulse" />
+        <div className="mt-4 flex items-center gap-2 rounded-md border border-amber-500/20 bg-amber-950/30 px-3 py-2">
+          <div className="h-1.5 w-1.5 animate-pulse rounded-full bg-amber-400" />
           <span className="text-xs text-amber-400">
             Retry loop active — critic sending back to executor
           </span>

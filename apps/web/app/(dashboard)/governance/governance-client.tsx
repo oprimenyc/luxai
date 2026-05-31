@@ -11,7 +11,8 @@ const MOCK_PENDING = [
     agent_id: "agent-001",
     risk_score: 0.72,
     risk_level: "high" as const,
-    task_preview: "Delete all archived workflow records from the database and compress audit logs older than 90 days.",
+    task_preview:
+      "Delete all archived workflow records from the database and compress audit logs older than 90 days.",
     expires_at: new Date(Date.now() + 25 * 60 * 1000).toISOString(),
     factors: [
       { name: "high_risk_pattern", score: 0.7, reason: "Task contains DELETE + database pattern" },
@@ -30,14 +31,22 @@ const RISK_CONFIG = {
 export function GovernanceClient() {
   return (
     <div className="space-y-6">
-      <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="flex items-center justify-between">
+      <motion.div
+        initial={{ opacity: 0, y: -10 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="flex items-center justify-between"
+      >
         <div>
           <h2 className="text-2xl font-bold tracking-tight text-white">Governance</h2>
-          <p className="mt-1 text-sm text-zinc-500">Risk controls, approvals, and execution policies</p>
+          <p className="mt-1 text-sm text-zinc-500">
+            Risk controls, approvals, and execution policies
+          </p>
         </div>
         <div className="flex items-center gap-2">
           <Shield className="h-4 w-4 text-violet-400" />
-          <span className="text-sm text-zinc-400">Policy: <span className="text-white">Default</span></span>
+          <span className="text-sm text-zinc-400">
+            Policy: <span className="text-white">Default</span>
+          </span>
         </div>
       </motion.div>
 
@@ -45,8 +54,18 @@ export function GovernanceClient() {
       <div className="grid grid-cols-4 gap-3">
         {[
           { label: "Risk Threshold", value: "High", icon: Shield, color: "text-violet-400" },
-          { label: "Pending Approvals", value: MOCK_PENDING.length.toString(), icon: AlertTriangle, color: "text-amber-400" },
-          { label: "Auto-Approved Today", value: "14", icon: CheckCircle, color: "text-emerald-400" },
+          {
+            label: "Pending Approvals",
+            value: MOCK_PENDING.length.toString(),
+            icon: AlertTriangle,
+            color: "text-amber-400",
+          },
+          {
+            label: "Auto-Approved Today",
+            value: "14",
+            icon: CheckCircle,
+            color: "text-emerald-400",
+          },
           { label: "Kill Switches", value: "0", icon: Zap, color: "text-zinc-400" },
         ].map((stat) => {
           const Icon = stat.icon;
@@ -57,7 +76,7 @@ export function GovernanceClient() {
               animate={{ opacity: 1, scale: 1 }}
               className="rounded-xl border border-white/10 bg-zinc-950 p-4"
             >
-              <div className="flex items-center gap-2 mb-2">
+              <div className="mb-2 flex items-center gap-2">
                 <Icon className={cn("h-4 w-4", stat.color)} />
                 <span className="text-xs text-zinc-500">{stat.label}</span>
               </div>
@@ -92,8 +111,14 @@ export function GovernanceClient() {
                 >
                   <div className="flex items-start justify-between gap-4">
                     <div className="flex-1">
-                      <div className="flex items-center gap-3 mb-2">
-                        <span className={cn("rounded-full px-2 py-0.5 text-xs font-medium border", riskCfg.bg, riskCfg.color)}>
+                      <div className="mb-2 flex items-center gap-3">
+                        <span
+                          className={cn(
+                            "rounded-full border px-2 py-0.5 text-xs font-medium",
+                            riskCfg.bg,
+                            riskCfg.color,
+                          )}
+                        >
                           {req.risk_level.toUpperCase()} RISK — {(req.risk_score * 100).toFixed(0)}%
                         </span>
                         <span className="text-xs text-zinc-500">
@@ -102,11 +127,14 @@ export function GovernanceClient() {
                         <span className="text-xs text-zinc-600">Expires in {expiresIn}m</span>
                       </div>
 
-                      <p className="text-sm text-zinc-300 mb-3">"{req.task_preview}"</p>
+                      <p className="mb-3 text-sm text-zinc-300">&ldquo;{req.task_preview}&rdquo;</p>
 
                       <div className="space-y-1">
                         {req.factors.map((f) => (
-                          <div key={f.name} className="flex items-center gap-2 text-xs text-zinc-500">
+                          <div
+                            key={f.name}
+                            className="flex items-center gap-2 text-xs text-zinc-500"
+                          >
                             <div className="h-1 w-1 rounded-full bg-zinc-600" />
                             {f.reason}
                           </div>
@@ -114,7 +142,7 @@ export function GovernanceClient() {
                       </div>
                     </div>
 
-                    <div className="flex flex-col gap-2 shrink-0">
+                    <div className="flex shrink-0 flex-col gap-2">
                       <button className="flex items-center gap-2 rounded-lg bg-emerald-600/90 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-emerald-500">
                         <CheckCircle className="h-4 w-4" />
                         Approve
@@ -137,7 +165,9 @@ export function GovernanceClient() {
         <div className="flex items-center justify-between">
           <div>
             <p className="text-sm font-semibold text-rose-300">Emergency Kill Switch</p>
-            <p className="mt-1 text-xs text-zinc-500">Immediately terminate all running agent sessions</p>
+            <p className="mt-1 text-xs text-zinc-500">
+              Immediately terminate all running agent sessions
+            </p>
           </div>
           <button className="flex items-center gap-2 rounded-lg border border-rose-700/50 bg-rose-950/50 px-4 py-2 text-sm font-medium text-rose-300 transition-colors hover:bg-rose-900/60">
             <Zap className="h-4 w-4" />

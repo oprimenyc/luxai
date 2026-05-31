@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { Download, RefreshCw, Settings2 } from "lucide-react";
+import { Download, RefreshCw } from "lucide-react";
 import { useState } from "react";
 import { ActivityTimeline } from "@/components/monitoring/activity-timeline";
 import { ConnectionIndicator } from "@/components/monitoring/connection-indicator";
@@ -13,7 +13,7 @@ import { useEventStream } from "@/lib/websocket/hooks";
 export function MonitoringClient() {
   const [sessionFilter, setSessionFilter] = useState<string>("");
 
-  const { events, connectionState, clearEvents, isConnected } = useEventStream({
+  const { events, connectionState, clearEvents } = useEventStream({
     sessionId: sessionFilter || undefined,
     enabled: true,
     maxEvents: 500,
@@ -40,9 +40,7 @@ export function MonitoringClient() {
       >
         <div>
           <h2 className="text-2xl font-bold tracking-tight text-white">Monitoring</h2>
-          <p className="mt-1 text-sm text-zinc-500">
-            Realtime agent orchestration visibility
-          </p>
+          <p className="mt-1 text-sm text-zinc-500">Realtime agent orchestration visibility</p>
         </div>
 
         <div className="flex items-center gap-3">
@@ -52,7 +50,9 @@ export function MonitoringClient() {
           <input
             type="text"
             value={sessionFilter}
-            onChange={(e) => setSessionFilter(e.target.value)}
+            onChange={(e) => {
+              setSessionFilter(e.target.value);
+            }}
             placeholder="Filter by session ID…"
             className="w-52 rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-xs text-zinc-300 placeholder:text-zinc-600 focus:outline-none focus:ring-1 focus:ring-white/20"
           />

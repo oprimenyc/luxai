@@ -321,7 +321,9 @@ function ContractCard({
 
       {/* Expandable: score breakdown */}
       <button
-        onClick={() => setExpanded(!expanded)}
+        onClick={() => {
+          setExpanded(!expanded);
+        }}
         className="flex w-full items-center justify-between border-t border-white/[0.05] px-5 py-2.5 text-[10px] text-zinc-600 transition-colors hover:text-zinc-400"
       >
         <span>Score breakdown</span>
@@ -349,7 +351,7 @@ function ContractCard({
 
 function SpreadCard({
   spread,
-  budgetUsd,
+  budgetUsd: _budgetUsd,
   delay,
 }: {
   spread: SpreadRec;
@@ -523,7 +525,9 @@ function WorkbenchForm({
           </label>
           <input
             value={symbol}
-            onChange={(e) => setSymbol(e.target.value.toUpperCase())}
+            onChange={(e) => {
+              setSymbol(e.target.value.toUpperCase());
+            }}
             placeholder="AAPL"
             maxLength={10}
             className="min-h-[44px] w-full rounded-lg border border-white/[0.07] bg-white/[0.04] px-3 py-2.5 font-mono text-sm text-white transition-colors placeholder:text-zinc-700 focus:border-white/20 focus:outline-none"
@@ -538,7 +542,9 @@ function WorkbenchForm({
               <button
                 key={d}
                 type="button"
-                onClick={() => setDirection(d)}
+                onClick={() => {
+                  setDirection(d);
+                }}
                 className={cn(
                   "flex min-h-[44px] items-center justify-center gap-1.5 rounded-lg border text-xs font-semibold transition-all",
                   direction === d
@@ -570,7 +576,9 @@ function WorkbenchForm({
           <input
             type="date"
             value={expiration}
-            onChange={(e) => setExpiration(e.target.value)}
+            onChange={(e) => {
+              setExpiration(e.target.value);
+            }}
             className="min-h-[44px] w-full rounded-lg border border-white/[0.07] bg-white/[0.04] py-2.5 pl-9 pr-3 text-sm text-white transition-colors [color-scheme:dark] focus:border-white/20 focus:outline-none"
           />
         </div>
@@ -594,7 +602,9 @@ function WorkbenchForm({
                 type="number"
                 min="1"
                 value={val}
-                onChange={(e) => set(e.target.value)}
+                onChange={(e) => {
+                  set(e.target.value);
+                }}
                 placeholder={placeholder}
                 className="min-h-[44px] w-full rounded-lg border border-white/[0.07] bg-white/[0.04] py-2.5 pl-6 pr-3 text-sm tabular-nums text-white transition-colors placeholder:text-zinc-700 focus:border-white/20 focus:outline-none"
               />
@@ -692,7 +702,12 @@ export function WorkbenchClient() {
 
       {/* Input form */}
       <div className="rounded-2xl border border-white/[0.06] bg-zinc-900/60 p-5">
-        <WorkbenchForm onSubmit={handleSubmit} loading={loading} />
+        <WorkbenchForm
+          onSubmit={(d) => {
+            void handleSubmit(d);
+          }}
+          loading={loading}
+        />
       </div>
 
       {/* Error */}

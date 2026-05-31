@@ -105,7 +105,7 @@ export class LuxWebSocketClient {
       this.ws.onerror = (ev) => {
         this.options.onError?.(ev);
       };
-    } catch (err) {
+    } catch {
       this.scheduleReconnect();
     }
   }

@@ -56,7 +56,9 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
         label: "Dashboard",
         description: "Overview and key metrics",
         icon: LayoutDashboard,
-        action: () => navigate("/dashboard"),
+        action: () => {
+          navigate("/dashboard");
+        },
         category: "Navigation",
         keywords: ["home", "overview"],
       },
@@ -65,7 +67,9 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
         label: "Agents",
         description: "Manage your AI agents",
         icon: Bot,
-        action: () => navigate("/agents"),
+        action: () => {
+          navigate("/agents");
+        },
         category: "Navigation",
         keywords: ["ai", "bot"],
       },
@@ -74,7 +78,9 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
         label: "Monitoring",
         description: "Realtime orchestration dashboard",
         icon: Activity,
-        action: () => navigate("/monitoring"),
+        action: () => {
+          navigate("/monitoring");
+        },
         category: "Navigation",
         keywords: ["realtime", "live", "events", "stream"],
       },
@@ -83,7 +89,9 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
         label: "Memory",
         description: "Explore persistent memory",
         icon: Brain,
-        action: () => navigate("/memory"),
+        action: () => {
+          navigate("/memory");
+        },
         category: "Navigation",
         keywords: ["semantic", "vector", "recall"],
       },
@@ -92,7 +100,9 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
         label: "Workflows",
         description: "Autonomous execution pipelines",
         icon: GitBranch,
-        action: () => navigate("/workflows"),
+        action: () => {
+          navigate("/workflows");
+        },
         category: "Navigation",
         keywords: ["automation", "pipeline", "dag"],
       },
@@ -101,7 +111,9 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
         label: "Governance",
         description: "Risk controls and approvals",
         icon: Shield,
-        action: () => navigate("/governance"),
+        action: () => {
+          navigate("/governance");
+        },
         category: "Navigation",
         keywords: ["rbac", "policy", "risk", "approval"],
       },
@@ -110,7 +122,9 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
         label: "Sessions",
         description: "View execution sessions",
         icon: Clock,
-        action: () => navigate("/sessions"),
+        action: () => {
+          navigate("/sessions");
+        },
         category: "Navigation",
         keywords: ["history", "runs"],
       },
@@ -119,7 +133,9 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
         label: "Settings",
         description: "Account and system configuration",
         icon: Settings,
-        action: () => navigate("/settings"),
+        action: () => {
+          navigate("/settings");
+        },
         category: "Navigation",
         keywords: ["config", "preferences"],
       },
@@ -128,7 +144,9 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
         label: "New Agent",
         description: "Create a new AI agent",
         icon: Zap,
-        action: () => navigate("/agents?new=true"),
+        action: () => {
+          navigate("/agents?new=true");
+        },
         category: "Actions",
         keywords: ["create", "add"],
       },
@@ -137,7 +155,9 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
         label: "New Workflow",
         description: "Create an autonomous workflow",
         icon: GitBranch,
-        action: () => navigate("/workflows?new=true"),
+        action: () => {
+          navigate("/workflows?new=true");
+        },
         category: "Actions",
         keywords: ["create", "pipeline"],
       },
@@ -151,9 +171,9 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
     return commands.filter(
       (c) =>
         c.label.toLowerCase().includes(q) ||
-        c.description?.toLowerCase().includes(q) ||
+        (c.description?.toLowerCase().includes(q) ?? false) ||
         c.category.toLowerCase().includes(q) ||
-        c.keywords?.some((k) => k.includes(q)),
+        (c.keywords?.some((k) => k.includes(q)) ?? false),
     );
   }, [commands, query]);
 
@@ -225,7 +245,7 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
             <div className="overflow-hidden rounded-2xl border border-white/10 bg-zinc-950 shadow-2xl shadow-black/60">
               {/* Search input */}
               <div className="flex items-center gap-3 border-b border-white/10 px-4 py-3">
-                <Search className="h-4 w-4 text-zinc-500 shrink-0" />
+                <Search className="h-4 w-4 shrink-0 text-zinc-500" />
                 <input
                   ref={inputRef}
                   type="text"
@@ -244,11 +264,7 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
               </div>
 
               {/* Results */}
-              <ul
-                ref={listRef}
-                className="max-h-96 overflow-y-auto py-2"
-                role="listbox"
-              >
+              <ul ref={listRef} className="max-h-96 overflow-y-auto py-2" role="listbox">
                 {Object.entries(grouped).map(([category, items]) => (
                   <li key={category}>
                     <div className="px-4 py-1.5">
@@ -267,7 +283,9 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
                           role="option"
                           aria-selected={isActive}
                           onClick={item.action}
-                          onMouseEnter={() => setActiveIndex(globalIndex)}
+                          onMouseEnter={() => {
+                            setActiveIndex(globalIndex);
+                          }}
                           className={cn(
                             "flex w-full items-center gap-3 px-4 py-2.5 text-left transition-colors",
                             isActive ? "bg-white/[0.06]" : "hover:bg-white/[0.03]",
@@ -283,17 +301,20 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
                           >
                             <Icon className="h-4 w-4" />
                           </div>
-                          <div className="flex-1 min-w-0">
-                            <p className={cn("text-sm font-medium", isActive ? "text-white" : "text-zinc-300")}>
+                          <div className="min-w-0 flex-1">
+                            <p
+                              className={cn(
+                                "text-sm font-medium",
+                                isActive ? "text-white" : "text-zinc-300",
+                              )}
+                            >
                               {item.label}
                             </p>
                             {item.description && (
-                              <p className="text-xs text-zinc-600 truncate">{item.description}</p>
+                              <p className="truncate text-xs text-zinc-600">{item.description}</p>
                             )}
                           </div>
-                          {isActive && (
-                            <ChevronRight className="h-4 w-4 text-zinc-600 shrink-0" />
-                          )}
+                          {isActive && <ChevronRight className="h-4 w-4 shrink-0 text-zinc-600" />}
                         </button>
                       );
                     })}
@@ -302,7 +323,7 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
 
                 {flatFiltered.length === 0 && (
                   <li className="flex items-center justify-center py-12 text-sm text-zinc-600">
-                    No commands found for "{query}"
+                    No commands found for &ldquo;{query}&rdquo;
                   </li>
                 )}
               </ul>
@@ -350,8 +371,16 @@ export function useCommandPalette() {
       }
     };
     window.addEventListener("keydown", handler);
-    return () => window.removeEventListener("keydown", handler);
+    return () => {
+      window.removeEventListener("keydown", handler);
+    };
   }, []);
 
-  return { open, setOpen, onClose: () => setOpen(false) };
+  return {
+    open,
+    setOpen,
+    onClose: () => {
+      setOpen(false);
+    },
+  };
 }

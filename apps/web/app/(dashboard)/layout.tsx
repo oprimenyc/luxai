@@ -99,7 +99,9 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
       {sidebarOpen && (
         <div
           className="fixed inset-0 z-40 bg-black/50 md:hidden"
-          onClick={() => setSidebarOpen(false)}
+          onClick={() => {
+            setSidebarOpen(false);
+          }}
         />
       )}
 
@@ -127,7 +129,9 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
           {/* Mobile close button */}
           <button
             className="ml-auto p-1 text-zinc-500 md:hidden"
-            onClick={() => setSidebarOpen(false)}
+            onClick={() => {
+              setSidebarOpen(false);
+            }}
           >
             <ChevronRight className="h-4 w-4 rotate-180" />
           </button>
@@ -136,7 +140,9 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
         {/* Command palette trigger */}
         {sidebarOpen && (
           <button
-            onClick={() => setOpen(true)}
+            onClick={() => {
+              setOpen(true);
+            }}
             className="mx-3 mt-3 flex items-center gap-2 rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-xs text-zinc-500 transition-colors hover:bg-white/10 hover:text-zinc-300"
           >
             <Command className="h-3.5 w-3.5" />
@@ -186,7 +192,9 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
           <div className="flex items-center gap-3">
             <button
               className="-ml-1 p-1 text-zinc-400 hover:text-white md:hidden"
-              onClick={() => setSidebarOpen(true)}
+              onClick={() => {
+                setSidebarOpen(true);
+              }}
             >
               <Menu className="h-5 w-5" />
             </button>
@@ -206,7 +214,9 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
             </div>
 
             <button
-              onClick={() => setOpen(true)}
+              onClick={() => {
+                setOpen(true);
+              }}
               className="flex items-center gap-1.5 rounded-lg border border-white/10 bg-white/5 px-2.5 py-1.5 text-xs text-zinc-500 transition-colors hover:bg-white/10 hover:text-zinc-300"
             >
               <Command className="h-3.5 w-3.5" />

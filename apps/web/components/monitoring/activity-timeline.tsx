@@ -47,31 +47,27 @@ function getEventSummary(event: LuxEvent): string {
   const p = event.payload;
   switch (event.type) {
     case "graph.node_entered":
-      return `Entered ${p["node_name"]} (iteration ${p["iteration"]})`;
+      return `Entered ${p.node_name} (iteration ${p.iteration})`;
     case "graph.node_exited":
-      return `Exited ${p["node_name"]} in ${p["duration_ms"]}ms`;
+      return `Exited ${p.node_name} in ${p.duration_ms}ms`;
     case "session.started":
       return `Session ${String(event.session_id).slice(0, 8)}… started`;
     case "session.completed":
       return `Session completed`;
     case "telemetry.token_usage":
-      return `${p["model"]}: ${p["input_tokens"]}↑ ${p["output_tokens"]}↓ tokens`;
+      return `${p.model}: ${p.input_tokens}↑ ${p.output_tokens}↓ tokens`;
     case "memory.retrieved":
-      return `Retrieved ${Array.isArray(p["memory_ids"]) ? p["memory_ids"].length : 1} memories`;
+      return `Retrieved ${Array.isArray(p.memory_ids) ? p.memory_ids.length : 1} memories`;
     case "governance.approval_required":
-      return `Approval required — risk: ${p["risk_level"]}`;
+      return `Approval required — risk: ${p.risk_level}`;
     case "telemetry.retry":
-      return `Retry attempt ${p["attempt"]}/${p["max_attempts"]}`;
+      return `Retry attempt ${p.attempt}/${p.max_attempts}`;
     default:
       return event.type;
   }
 }
 
-export function ActivityTimeline({
-  events,
-  maxItems = 30,
-  className,
-}: ActivityTimelineProps) {
+export function ActivityTimeline({ events, maxItems = 30, className }: ActivityTimelineProps) {
   const significantEvents = events
     .filter((e) => {
       const skip = new Set(["system.heartbeat", "system.error"]);
@@ -88,7 +84,7 @@ export function ActivityTimeline({
 
       <div className="relative">
         {/* Vertical line */}
-        <div className="absolute left-5 top-0 bottom-0 w-px bg-white/5" />
+        <div className="absolute bottom-0 left-5 top-0 w-px bg-white/5" />
 
         <div className="space-y-1">
           <AnimatePresence mode="popLayout" initial={false}>
@@ -118,9 +114,11 @@ export function ActivityTimeline({
                   </div>
 
                   {/* Content */}
-                  <div className="flex-1 min-w-0 pb-1">
-                    <p className="text-xs text-zinc-300 truncate">{getEventSummary(event)}</p>
-                    <p className="text-[10px] text-zinc-700 mt-0.5">{formatTime(event.timestamp)}</p>
+                  <div className="min-w-0 flex-1 pb-1">
+                    <p className="truncate text-xs text-zinc-300">{getEventSummary(event)}</p>
+                    <p className="mt-0.5 text-[10px] text-zinc-700">
+                      {formatTime(event.timestamp)}
+                    </p>
                   </div>
                 </motion.div>
               );
@@ -128,7 +126,7 @@ export function ActivityTimeline({
           </AnimatePresence>
 
           {significantEvents.length === 0 && (
-            <div className="flex h-24 items-center justify-center text-xs text-zinc-700 ml-8">
+            <div className="ml-8 flex h-24 items-center justify-center text-xs text-zinc-700">
               No activity yet
             </div>
           )}

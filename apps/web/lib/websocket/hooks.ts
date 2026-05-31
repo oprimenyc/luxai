@@ -40,14 +40,14 @@ export function useEventStream({
   const [latestEvent, setLatestEvent] = useState<LuxEvent | null>(null);
   const clientRef = useRef<LuxWebSocketClient | null>(null);
 
-  const clearEvents = useCallback(() => setEvents([]), []);
+  const clearEvents = useCallback(() => {
+    setEvents([]);
+  }, []);
 
   useEffect(() => {
     if (!enabled) return;
 
-    const url = sessionId
-      ? `${WS_BASE_URL}/ws/sessions/${sessionId}`
-      : `${WS_BASE_URL}/ws/events`;
+    const url = sessionId ? `${WS_BASE_URL}/ws/sessions/${sessionId}` : `${WS_BASE_URL}/ws/events`;
 
     const client = new LuxWebSocketClient({
       url,
@@ -100,10 +100,11 @@ export function useTokenMetrics(events: LuxEvent[]): TokenMetrics {
 
   for (const ev of tokenEvents) {
     const p = ev.payload as Record<string, number>;
-    const model = String(ev.payload["model"] ?? "unknown");
-    const input = Number(p["input_tokens"] ?? 0);
-    const output = Number(p["output_tokens"] ?? 0);
-    const cost = Number(p["cost_usd"] ?? 0);
+    const rawModel = ev.payload.model;
+    const model = typeof rawModel === "string" ? rawModel : "unknown";
+    const input = p.input_tokens ?? 0;
+    const output = p.output_tokens ?? 0;
+    const cost = p.cost_usd ?? 0;
 
     totalInput += input;
     totalOutput += output;
@@ -123,13 +124,20 @@ export function useTokenMetrics(events: LuxEvent[]): TokenMetrics {
   };
 }
 
+interface NodeEntry {
+  name: string;
+  enteredAt: string;
+  exitedAt?: string;
+  durationMs?: number;
+}
+
 export function useGraphNodes(events: LuxEvent[]) {
-  type NodeEntry = { name: string; enteredAt: string; exitedAt?: string; durationMs?: number };
   const nodes: NodeEntry[] = [];
   const map: Record<string, NodeEntry> = {};
 
   for (const ev of [...events].reverse()) {
-    const name = String(ev.payload["node_name"] ?? "");
+    const rawName = ev.payload.node_name;
+    const name = typeof rawName === "string" ? rawName : "";
     if (!name) continue;
 
     if (ev.type === "graph.node_entered") {
@@ -138,7 +146,7 @@ export function useGraphNodes(events: LuxEvent[]) {
       nodes.push(entry);
     } else if (ev.type === "graph.node_exited" && map[name]) {
       map[name].exitedAt = ev.timestamp;
-      map[name].durationMs = Number(ev.payload["duration_ms"] ?? 0);
+      map[name].durationMs = Number(ev.payload.duration_ms ?? 0);
     }
   }
 
@@ -147,9 +155,7 @@ export function useGraphNodes(events: LuxEvent[]) {
 
 export function useActiveSession(events: LuxEvent[]): string | null {
   const started = events.find((e) => e.type === "session.started");
-  const ended = events.find(
-    (e) => e.type === "session.completed" || e.type === "session.failed",
-  );
+  const ended = events.find((e) => e.type === "session.completed" || e.type === "session.failed");
   if (started && !ended) return started.session_id;
   return null;
 }

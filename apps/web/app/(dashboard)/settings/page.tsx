@@ -34,7 +34,9 @@ export default function SettingsPage() {
               return (
                 <li key={tab}>
                   <button
-                    onClick={() => setActiveTab(tab)}
+                    onClick={() => {
+                      setActiveTab(tab);
+                    }}
                     className={cn(
                       "flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors",
                       activeTab === tab
@@ -74,7 +76,7 @@ export default function SettingsPage() {
                   </div>
                 ))}
               </div>
-              <button className="rounded-lg bg-white/10 px-4 py-2 text-sm font-medium text-white border border-white/10 transition-colors hover:bg-white/15">
+              <button className="rounded-lg border border-white/10 bg-white/10 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-white/15">
                 Save Changes
               </button>
             </div>
@@ -88,14 +90,16 @@ export default function SettingsPage() {
                   + New Key
                 </button>
               </div>
-              <div className="rounded-lg border border-white/10 divide-y divide-white/5">
+              <div className="divide-y divide-white/5 rounded-lg border border-white/10">
                 {["Production Key", "Development Key"].map((key) => (
                   <div key={key} className="flex items-center justify-between px-4 py-3">
                     <div>
                       <p className="text-sm text-white">{key}</p>
                       <p className="font-mono text-xs text-zinc-600">lux_••••••••••••••••</p>
                     </div>
-                    <button className="text-xs text-zinc-600 hover:text-rose-400 transition-colors">Revoke</button>
+                    <button className="text-xs text-zinc-600 transition-colors hover:text-rose-400">
+                      Revoke
+                    </button>
                   </div>
                 ))}
               </div>
@@ -106,11 +110,18 @@ export default function SettingsPage() {
             <div className="space-y-5">
               <h3 className="text-sm font-semibold text-white">Security Settings</h3>
               {[
-                { label: "Two-factor Authentication", desc: "Add an extra layer of security", enabled: false },
+                {
+                  label: "Two-factor Authentication",
+                  desc: "Add an extra layer of security",
+                  enabled: false,
+                },
                 { label: "Session Timeout", desc: "Auto sign-out after inactivity", enabled: true },
                 { label: "Audit Logging", desc: "Log all account actions", enabled: true },
               ].map((setting) => (
-                <div key={setting.label} className="flex items-center justify-between rounded-lg border border-white/10 bg-white/[0.02] px-4 py-3">
+                <div
+                  key={setting.label}
+                  className="flex items-center justify-between rounded-lg border border-white/10 bg-white/[0.02] px-4 py-3"
+                >
                   <div>
                     <p className="text-sm text-white">{setting.label}</p>
                     <p className="text-xs text-zinc-600">{setting.desc}</p>
@@ -142,12 +153,19 @@ export default function SettingsPage() {
                 { label: "Kill Switch Events", desc: "Alert on kill switch activation" },
                 { label: "Weekly Reports", desc: "Usage summary every Monday" },
               ].map((notif) => (
-                <div key={notif.label} className="flex items-center justify-between rounded-lg border border-white/10 bg-white/[0.02] px-4 py-3">
+                <div
+                  key={notif.label}
+                  className="flex items-center justify-between rounded-lg border border-white/10 bg-white/[0.02] px-4 py-3"
+                >
                   <div>
                     <p className="text-sm text-white">{notif.label}</p>
                     <p className="text-xs text-zinc-600">{notif.desc}</p>
                   </div>
-                  <input type="checkbox" defaultChecked className="h-4 w-4 rounded accent-violet-500" />
+                  <input
+                    type="checkbox"
+                    defaultChecked
+                    className="h-4 w-4 rounded accent-violet-500"
+                  />
                 </div>
               ))}
             </div>

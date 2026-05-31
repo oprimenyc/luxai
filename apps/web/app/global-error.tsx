@@ -43,7 +43,9 @@ export default function GlobalError({
           </p>
           <div className="pt-4">
             <button
-              onClick={() => reset()}
+              onClick={() => {
+                reset();
+              }}
               className="w-full rounded-lg border border-red-500/30 bg-red-500/10 px-6 py-2.5 text-sm font-medium uppercase tracking-wider text-red-400 transition-colors hover:bg-red-500/20"
             >
               Restart System

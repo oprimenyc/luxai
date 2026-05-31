@@ -83,7 +83,7 @@ export function ShadowBanner() {
 
       const headers: HeadersInit = { "Content-Type": "application/json" };
       if (token) {
-        headers["Authorization"] = `Bearer ${token}`;
+        headers.Authorization = `Bearer ${token}`;
       }
 
       const res = await fetch(`${API_BASE}/api/v1/trading/shadow-status`, {
@@ -104,9 +104,13 @@ export function ShadowBanner() {
   }
 
   useEffect(() => {
-    fetchStatus();
-    const interval = setInterval(fetchStatus, POLL_INTERVAL_MS);
-    return () => clearInterval(interval);
+    void fetchStatus();
+    const interval = setInterval(() => {
+      void fetchStatus();
+    }, POLL_INTERVAL_MS);
+    return () => {
+      clearInterval(interval);
+    };
   }, []);
 
   // Always render during SSR/loading — fail-safe: show banner until confirmed inactive

@@ -180,7 +180,9 @@ function OrderForm({ onSuccess }: { onSuccess: () => void }) {
 
   return (
     <form
-      onSubmit={handleSubmit}
+      onSubmit={(e) => {
+        void handleSubmit(e);
+      }}
       className="space-y-4 rounded-xl border border-zinc-800/60 bg-zinc-900/60 p-5"
     >
       <div className="flex items-center justify-between">
@@ -194,7 +196,9 @@ function OrderForm({ onSuccess }: { onSuccess: () => void }) {
           <div className="flex gap-2">
             <input
               value={symbol}
-              onChange={(e) => setSymbol(e.target.value.toUpperCase())}
+              onChange={(e) => {
+                setSymbol(e.target.value.toUpperCase());
+              }}
               className="flex-1 rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm uppercase text-white focus:border-zinc-500 focus:outline-none"
               placeholder="SPY"
               maxLength={20}
@@ -202,7 +206,9 @@ function OrderForm({ onSuccess }: { onSuccess: () => void }) {
             />
             <button
               type="button"
-              onClick={loadSuggestion}
+              onClick={() => {
+                void loadSuggestion();
+              }}
               className="rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-xs text-zinc-400 transition-colors hover:border-zinc-600"
             >
               Size
@@ -211,7 +217,13 @@ function OrderForm({ onSuccess }: { onSuccess: () => void }) {
           {suggested !== null && (
             <p className="mt-1 text-xs text-amber-400">
               Suggested qty: {suggested}{" "}
-              <button type="button" className="underline" onClick={() => setQty(String(suggested))}>
+              <button
+                type="button"
+                className="underline"
+                onClick={() => {
+                  setQty(String(suggested));
+                }}
+              >
                 use
               </button>
             </p>
@@ -225,7 +237,9 @@ function OrderForm({ onSuccess }: { onSuccess: () => void }) {
               <button
                 key={s}
                 type="button"
-                onClick={() => setSide(s)}
+                onClick={() => {
+                  setSide(s);
+                }}
                 className={`flex-1 py-2 text-xs font-medium transition-colors ${
                   side === s
                     ? s === "buy"
@@ -245,7 +259,9 @@ function OrderForm({ onSuccess }: { onSuccess: () => void }) {
           <input
             type="number"
             value={qty}
-            onChange={(e) => setQty(e.target.value)}
+            onChange={(e) => {
+              setQty(e.target.value);
+            }}
             min={1}
             className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-white focus:border-zinc-500 focus:outline-none"
             required
@@ -256,7 +272,9 @@ function OrderForm({ onSuccess }: { onSuccess: () => void }) {
           <label className="mb-1 block text-xs text-zinc-500">Order Type</label>
           <select
             value={orderType}
-            onChange={(e) => setOrderType(e.target.value as OrderType)}
+            onChange={(e) => {
+              setOrderType(e.target.value as OrderType);
+            }}
             className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-white focus:border-zinc-500 focus:outline-none"
           >
             <option value="market">Market</option>
@@ -272,7 +290,9 @@ function OrderForm({ onSuccess }: { onSuccess: () => void }) {
               type="number"
               step="0.01"
               value={limitPrice}
-              onChange={(e) => setLimitPrice(e.target.value)}
+              onChange={(e) => {
+                setLimitPrice(e.target.value);
+              }}
               className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-white focus:border-zinc-500 focus:outline-none"
               placeholder="0.00"
             />
@@ -286,7 +306,9 @@ function OrderForm({ onSuccess }: { onSuccess: () => void }) {
               type="number"
               step="0.01"
               value={stopPrice}
-              onChange={(e) => setStopPrice(e.target.value)}
+              onChange={(e) => {
+                setStopPrice(e.target.value);
+              }}
               className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-white focus:border-zinc-500 focus:outline-none"
               placeholder="0.00"
             />
@@ -523,7 +545,9 @@ export function TradingClient() {
   useEffect(() => {
     void load();
     const interval = setInterval(() => void load(), 15_000);
-    return () => clearInterval(interval);
+    return () => {
+      clearInterval(interval);
+    };
   }, [load]);
 
   const tabs: { id: Tab; label: string }[] = [
@@ -549,7 +573,9 @@ export function TradingClient() {
             Refresh
           </button>
           <button
-            onClick={handleEmergencyHalt}
+            onClick={() => {
+              void handleEmergencyHalt();
+            }}
             disabled={halting}
             className="ml-2 rounded border border-red-500/30 bg-red-500/20 px-3 py-1.5 text-xs font-bold uppercase tracking-widest text-red-500 transition-colors hover:bg-red-500/30 disabled:opacity-50"
           >
@@ -644,7 +670,9 @@ export function TradingClient() {
             {tabs.map((t) => (
               <button
                 key={t.id}
-                onClick={() => setTab(t.id)}
+                onClick={() => {
+                  setTab(t.id);
+                }}
                 className={`px-5 py-3 text-sm transition-colors ${
                   tab === t.id
                     ? "border-b border-white text-white"

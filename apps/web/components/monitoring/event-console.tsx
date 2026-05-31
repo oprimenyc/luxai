@@ -1,8 +1,8 @@
 "use client";
 
 import { AnimatePresence, motion } from "framer-motion";
-import { AlertTriangle, CheckCircle, Info, Terminal, XCircle, Zap } from "lucide-react";
-import { useCallback, useRef, useState } from "react";
+import { AlertTriangle, Info, Terminal, XCircle, Zap } from "lucide-react";
+import { useRef, useState } from "react";
 import type { EventSeverity, EventType, LuxEvent } from "@/lib/events/schemas";
 import { cn } from "@/lib/utils";
 
@@ -57,17 +57,19 @@ function EventRow({ event, index }: { event: LuxEvent; index: number }) {
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.2, delay: index * 0.02 }}
       className={cn(
-        "group border-b border-white/5 hover:bg-white/[0.03] cursor-pointer transition-colors",
+        "group cursor-pointer border-b border-white/5 transition-colors hover:bg-white/[0.03]",
         event.severity === "critical" && "bg-rose-950/20",
       )}
-      onClick={() => setExpanded((p) => !p)}
+      onClick={() => {
+        setExpanded((p) => !p);
+      }}
     >
       <div className="flex items-center gap-3 px-4 py-2">
         {/* Severity dot */}
-        <div className={cn("h-1.5 w-1.5 rounded-full shrink-0", config.dot)} />
+        <div className={cn("h-1.5 w-1.5 shrink-0 rounded-full", config.dot)} />
 
         {/* Timestamp */}
-        <span className="font-mono text-[10px] text-zinc-600 shrink-0 w-28">{ts}</span>
+        <span className="w-28 shrink-0 font-mono text-[10px] text-zinc-600">{ts}</span>
 
         {/* Icon */}
         <Icon className={cn("h-3.5 w-3.5 shrink-0", config.color)} />
@@ -83,7 +85,7 @@ function EventRow({ event, index }: { event: LuxEvent; index: number }) {
         </span>
 
         {/* Payload preview */}
-        <span className="truncate text-xs text-zinc-400 flex-1">
+        <span className="flex-1 truncate text-xs text-zinc-400">
           {Object.entries(event.payload)
             .slice(0, 3)
             .map(([k, v]) => `${k}=${String(v).slice(0, 30)}`)
@@ -101,7 +103,7 @@ function EventRow({ event, index }: { event: LuxEvent; index: number }) {
             transition={{ duration: 0.15 }}
             className="overflow-hidden"
           >
-            <pre className="mx-4 mb-3 overflow-x-auto rounded-md bg-black/50 p-3 font-mono text-[10px] text-emerald-300 border border-emerald-900/30">
+            <pre className="mx-4 mb-3 overflow-x-auto rounded-md border border-emerald-900/30 bg-black/50 p-3 font-mono text-[10px] text-emerald-300">
               {JSON.stringify(event.payload, null, 2)}
             </pre>
           </motion.div>
@@ -128,13 +130,13 @@ export function EventConsole({ events, maxVisible = 200, className }: EventConso
     .slice(0, maxVisible);
 
   return (
-    <div className={cn("flex flex-col bg-zinc-950 rounded-xl border border-white/10", className)}>
+    <div className={cn("flex flex-col rounded-xl border border-white/10 bg-zinc-950", className)}>
       {/* Header */}
       <div className="flex items-center gap-3 border-b border-white/10 px-4 py-3">
         <Terminal className="h-4 w-4 text-emerald-400" />
         <span className="text-sm font-medium text-white">Event Console</span>
-        <div className="flex items-center gap-1 ml-2">
-          <div className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
+        <div className="ml-2 flex items-center gap-1">
+          <div className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-400" />
           <span className="text-xs text-zinc-500">{events.length} events</span>
         </div>
         <div className="ml-auto flex items-center gap-2">
@@ -143,12 +145,12 @@ export function EventConsole({ events, maxVisible = 200, className }: EventConso
             {(["all", "info", "warning", "error", "critical"] as const).map((s) => (
               <button
                 key={s}
-                onClick={() => setFilter(s)}
+                onClick={() => {
+                  setFilter(s);
+                }}
                 className={cn(
-                  "rounded px-2 py-0.5 text-xs transition-colors capitalize",
-                  filter === s
-                    ? "bg-white/10 text-white"
-                    : "text-zinc-500 hover:text-zinc-300",
+                  "rounded px-2 py-0.5 text-xs capitalize transition-colors",
+                  filter === s ? "bg-white/10 text-white" : "text-zinc-500 hover:text-zinc-300",
                 )}
               >
                 {s}
@@ -160,14 +162,18 @@ export function EventConsole({ events, maxVisible = 200, className }: EventConso
           <input
             type="text"
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={(e) => {
+              setSearch(e.target.value);
+            }}
             placeholder="Filter events…"
             className="w-40 rounded-md border border-white/10 bg-white/5 px-2 py-1 text-xs text-zinc-300 placeholder:text-zinc-600 focus:outline-none focus:ring-1 focus:ring-white/20"
           />
 
           {/* Pause */}
           <button
-            onClick={() => setPaused((p) => !p)}
+            onClick={() => {
+              setPaused((p) => !p);
+            }}
             className={cn(
               "rounded-md border px-2 py-1 text-xs transition-colors",
               paused

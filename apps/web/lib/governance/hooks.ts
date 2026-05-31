@@ -21,22 +21,21 @@ export function usePendingApprovals(events: LuxEvent[]): PendingApproval[] {
       events
         .filter(
           (e) =>
-            e.type === "governance.approval_granted" ||
-            e.type === "governance.approval_denied",
+            e.type === "governance.approval_granted" || e.type === "governance.approval_denied",
         )
-        .map((e) => e.payload["approval_id"] as string),
+        .map((e) => e.payload.approval_id as string),
     );
 
     const pending = events
       .filter((e) => e.type === "governance.approval_required")
       .map((e) => ({
-        approvalId: e.payload["approval_id"] as string,
+        approvalId: e.payload.approval_id as string,
         sessionId: e.session_id ?? "",
         agentId: e.agent_id ?? "",
-        riskScore: e.payload["risk_score"] as number,
-        riskLevel: e.payload["risk_level"] as PendingApproval["riskLevel"],
-        action: e.payload["action"] as string,
-        expiresAt: e.payload["expires_at"] as string,
+        riskScore: e.payload.risk_score as number,
+        riskLevel: e.payload.risk_level as PendingApproval["riskLevel"],
+        action: e.payload.action as string,
+        expiresAt: e.payload.expires_at as string,
       }))
       .filter((a) => !resolved.has(a.approvalId));
 
