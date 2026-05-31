@@ -6,7 +6,7 @@ build-backend = "hatchling.build"
 name = "luxai-api"
 version = "0.1.0"
 description = "LuxAI FastAPI backend service"
-requires-python = ">=3.12"
+requires-python = ">=3.11"
 dependencies = [
   "fastapi[standard]>=0.115.0",
   "uvicorn[standard]>=0.34.0",
