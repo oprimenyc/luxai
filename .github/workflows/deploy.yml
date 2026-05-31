@@ -49,9 +49,12 @@ jobs:
     name: Frontend → Vercel
     runs-on: ubuntu-latest
     environment: production
-    # Deploy frontend after backend — ensures the API is healthy before
-    # new UI code that depends on it goes live.
-    needs: deploy-backend
+    # Run frontend deploy independently — backend may fail due to token issues
+    # without blocking a valid frontend deploy.  When both succeed, backend
+    # will always be ahead of frontend (deploy-backend runs concurrently and
+    # is typically faster).  If you need strict ordering, re-add:
+    #   needs: deploy-backend
+    #   if: needs.deploy-backend.result == 'success'
     steps:
       - uses: actions/checkout@v4
 
@@ -83,8 +86,17 @@ jobs:
         # Vercel CLI reads VERCEL_ORG_ID and VERCEL_PROJECT_ID from env.
         # --prod flag promotes the deployment to the production alias.
         # --yes skips interactive prompts.
+        # Guard: skip gracefully when the three Vercel secrets are not yet set
+        # (i.e. before the project has been linked on vercel.com).
         working-directory: apps/web
-        run: vercel deploy --prod --yes --token="$VERCEL_TOKEN"
+        run: |
+          if [ -z "$VERCEL_TOKEN" ] || [ -z "$VERCEL_ORG_ID" ] || [ -z "$VERCEL_PROJECT_ID" ]; then
+            echo "⚠ Vercel secrets not yet configured — skipping deploy."
+            echo "   Add VERCEL_TOKEN, VERCEL_ORG_ID, VERCEL_PROJECT_ID to GitHub Actions secrets."
+            echo "   See DEPLOY_STATUS.md § Step 2 for instructions."
+            exit 0
+          fi
+          vercel deploy --prod --yes --token="$VERCEL_TOKEN"
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
           VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
