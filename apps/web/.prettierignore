@@ -1,0 +1,4 @@
+# Build output — exclude from prettier format checks
+.next/
+node_modules/
+dist/
