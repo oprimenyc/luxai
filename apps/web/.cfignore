@@ -1,0 +1,5 @@
+# Cloudflare Pages upload exclusions.
+# Applied to the .next/ deploy directory — excludes webpack build cache.
+# These files exceed the 25MB per-file limit and are not needed at runtime.
+cache/
+cache/**

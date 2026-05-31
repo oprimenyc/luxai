@@ -4,8 +4,8 @@ on:
   push:
     branches: [main]
 
-# Only one deploy runs at a time — never cancel in-progress to avoid
-# partial deploys leaving the backend and frontend out of sync.
+# One deploy at a time — never cancel in-progress to prevent
+# frontend/backend from being out of sync during a deploy window.
 concurrency:
   group: deploy-main
   cancel-in-progress: false
@@ -30,34 +30,27 @@ jobs:
         uses: superfly/flyctl-actions/setup-flyctl@master
 
       - name: Deploy to Fly.io
-        # --remote-only: Fly builds the Docker image on its own
-        # infrastructure, not in the GitHub Actions runner. This avoids
-        # needing Docker-in-Docker and keeps CI fast (~2 min build).
+        # --remote-only: Fly builds the Docker image on its own infrastructure.
+        # Avoids Docker-in-Docker and keeps CI fast (~2-3 min build).
         run: flyctl deploy --remote-only --wait-timeout 300
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
 
       - name: Verify health endpoint
         run: |
-          sleep 10
-          STATUS=$(flyctl status --app luxai-api --json | python3 -c "
-          import sys, json
-          data = json.load(sys.stdin)
-          machines = data.get('Machines', [])
-          states = [m.get('state', '') for m in machines]
-          print('ok' if all(s == 'started' for s in states) else 'degraded')
-          ")
-          echo "Machine status: $STATUS"
+          sleep 15
+          curl --fail --silent --show-error \
+            https://luxai-api.fly.dev/api/v1/health | python3 -m json.tool
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
 
-  # ── Frontend → Cloudflare Pages ─────────────────────────────────────────────
+  # ── Frontend → Vercel ───────────────────────────────────────────────────────
   deploy-frontend:
-    name: Frontend → Cloudflare Pages
+    name: Frontend → Vercel
     runs-on: ubuntu-latest
     environment: production
-    # Deploy frontend after backend to ensure the health check endpoint
-    # is live before users hit the UI.
+    # Deploy frontend after backend — ensures the API is healthy before
+    # new UI code that depends on it goes live.
     needs: deploy-backend
     steps:
       - uses: actions/checkout@v4
@@ -83,13 +76,16 @@ jobs:
           NEXT_PUBLIC_API_URL: ${{ secrets.NEXT_PUBLIC_API_URL }}
           NEXT_PUBLIC_APP_URL: ${{ secrets.NEXT_PUBLIC_APP_URL }}
 
-      - name: Deploy to Cloudflare Pages
-        uses: cloudflare/wrangler-action@v3
-        with:
-          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          command: >
-            pages deploy apps/web/.next
-            --project-name=luxai-web
-            --branch=main
-            --commit-dirty=true
+      - name: Install Vercel CLI
+        run: npm install -g vercel@latest
+
+      - name: Deploy to Vercel (production)
+        # Vercel CLI reads VERCEL_ORG_ID and VERCEL_PROJECT_ID from env.
+        # --prod flag promotes the deployment to the production alias.
+        # --yes skips interactive prompts.
+        working-directory: apps/web
+        run: vercel deploy --prod --yes --token="$VERCEL_TOKEN"
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
