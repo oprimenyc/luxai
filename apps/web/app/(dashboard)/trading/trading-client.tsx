@@ -56,11 +56,13 @@ type OrderType = "market" | "limit" | "stop";
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
-const BASE = "/api/v1";
+// Use absolute URL to the backend — relative /api/v1 would hit Vercel, not Fly.io.
+const API_BASE = (process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000").replace(/\/$/, "");
 
 async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(`${BASE}${path}`, {
+  const res = await fetch(`${API_BASE}/api/v1${path}`, {
     headers: { "Content-Type": "application/json" },
+    credentials: "include",
     ...init,
   });
   if (!res.ok) {
@@ -156,11 +158,16 @@ function OrderForm({ onSuccess }: { onSuccess: () => void }) {
     setSuccess(null);
     setLoading(true);
     try {
+      // idempotency_key is required by the backend (B1 safety chain).
+      // Generate a new UUID per submission — prevents duplicate order replay.
+      const idempotencyKey = crypto.randomUUID();
+
       const body: Record<string, unknown> = {
         symbol: symbol.toUpperCase(),
         side,
         qty: parseInt(qty, 10),
         order_type: orderType,
+        idempotency_key: idempotencyKey,
       };
       if (orderType !== "market" && limitPrice) body.limit_price = parseFloat(limitPrice);
       if (orderType === "stop" && stopPrice) body.stop_price = parseFloat(stopPrice);

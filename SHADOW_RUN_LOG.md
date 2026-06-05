@@ -8,20 +8,20 @@
 
 ---
 
-## Run 2 — ACTIVE (pending first login)
+## Run 2 — ACTIVE
 
 ## Run Parameters
 
-| Field             | Value                                      |
-| ----------------- | ------------------------------------------ |
-| Backend           | https://luxai-api.fly.dev                  |
-| Frontend          | Pending — Vercel project creation required |
-| Shadow mode       | ACTIVE                                     |
-| Kill switch       | Clear (health-check user only)             |
-| Day 1             | 2026-05-31                                 |
-| Day 7 checkpoint  | 2026-06-07                                 |
-| Day 14 checkpoint | 2026-06-14                                 |
-| Gate criteria     | 10 analyses, 5 shadow trades, 40–75% hit   |
+| Field             | Value                                     |
+| ----------------- | ----------------------------------------- |
+| Backend           | https://luxai-api.fly.dev                 |
+| Frontend          | https://luxai-web-snowy.vercel.app        |
+| Shadow mode       | ACTIVE — row written 2026-06-05 05:48 UTC |
+| Kill switch       | Clear                                     |
+| Day 1             | 2026-06-05                                |
+| Day 7 checkpoint  | 2026-06-12                                |
+| Day 14 checkpoint | 2026-06-19                                |
+| Gate criteria     | 10 analyses, 5 shadow trades, 40–75% hit  |
 
 ---
 

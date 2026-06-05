@@ -5,10 +5,14 @@ import type { ConnectionState } from "./client";
 import { LuxWebSocketClient } from "./client";
 import type { EventType, LuxEvent } from "@/lib/events/schemas";
 
+// Use the backend API URL, not the frontend host.
+// NEXT_PUBLIC_API_URL = "https://luxai-api.fly.dev" in production.
+// Replace http(s):// with ws(s):// so WebSocket connects to the API server.
+const _API_ORIGIN = (process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000").replace(/\/$/, "");
 const WS_BASE_URL =
   typeof window !== "undefined"
-    ? `${window.location.protocol === "https:" ? "wss" : "ws"}://${window.location.host}/api`
-    : "ws://localhost:8000/api";
+    ? _API_ORIGIN.replace(/^https(?=:\/\/)/, "wss").replace(/^http(?=:\/\/)/, "ws")
+    : "ws://localhost:8000";
 
 export interface UseEventStreamOptions {
   sessionId?: string;
@@ -47,7 +51,12 @@ export function useEventStream({
   useEffect(() => {
     if (!enabled) return;
 
-    const url = sessionId ? `${WS_BASE_URL}/ws/sessions/${sessionId}` : `${WS_BASE_URL}/ws/events`;
+    // Backend routes (prefix="/api/v1" in main.py):
+    //   /api/v1/events         — global event stream
+    //   /api/v1/sessions/{id}  — session-scoped stream
+    const url = sessionId
+      ? `${WS_BASE_URL}/api/v1/sessions/${sessionId}`
+      : `${WS_BASE_URL}/api/v1/events`;
 
     const client = new LuxWebSocketClient({
       url,
