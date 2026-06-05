@@ -11,6 +11,7 @@ const PROTECTED_ROUTES = [
   "/workflows",
   "/governance",
   "/trading",
+  "/workbench",
   "/settings",
 ];
 const AUTH_ROUTES = ["/login", "/signup"];

@@ -1,5 +1,15 @@
 # LuxAI OS — Shadow Run Log
 
+## Run 1 — VOIDED (2026-05-31)
+
+**Reason:** No authenticated user existed at the time this log was created. All 6 Supabase tables confirmed empty (0 rows) on 2026-06-05 audit. Shadow mode was never activated for a real user. No workbench analyses, shadow trades, or P&L data was collected. The shadow clock does not start until first successful login + shadow activation + first workbench analysis.
+
+**New start date:** Pending — starts on first user login + shadow activation.
+
+---
+
+## Run 2 — ACTIVE (pending first login)
+
 ## Run Parameters
 
 | Field             | Value                                      |
