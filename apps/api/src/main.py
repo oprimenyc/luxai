@@ -23,6 +23,7 @@ from src.telemetry.setup import configure_logging, configure_tracing, instrument
 from src.websocket.gateway import router as ws_router
 from src.websocket.manager import ws_manager
 from src.trading.router import router as trading_router
+from src.trading.scanner import auto_scanner_loop
 from src.workflows.router import router as workflows_router
 from src.workbench.router import router as workbench_router
 
@@ -161,6 +162,30 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         name="shadow_trade_monitor",
     )
 
+    # asyncio.create_task — task: auto_market_scanner
+    # Cancellation: explicitly cancelled in finally block below.
+    # Timeout: each scan cycle has asyncio.timeout(120s) internally.
+    # Only starts if Alpaca + Tradier keys are configured.
+    auto_scanner: asyncio.Task[None] | None = None
+    _alpaca_key = getattr(settings, "alpaca_api_key", "")
+    _tradier_key = getattr(settings, "tradier_api_key", "")
+    _scanner_user = getattr(settings, "scanner_user_id", "auto_scanner")
+    if _alpaca_key and _tradier_key:
+        auto_scanner = asyncio.create_task(
+            auto_scanner_loop(
+                user_id=_scanner_user,
+                tradier_api_key=_tradier_key,
+                alpaca_api_key=_alpaca_key,
+                alpaca_api_secret=getattr(settings, "alpaca_api_secret", ""),
+                redis_url=settings.redis_url,
+                tradier_sandbox=getattr(settings, "tradier_sandbox", True),
+            ),
+            name="auto_market_scanner",
+        )
+        log.info("auto_scanner_task_created", user_id=_scanner_user)
+    else:
+        log.warning("auto_scanner_not_started_missing_keys")
+
     try:
         yield
     finally:
@@ -170,6 +195,12 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
             await shadow_monitor
         except asyncio.CancelledError:
             pass
+        if auto_scanner is not None:
+            auto_scanner.cancel()
+            try:
+                await auto_scanner
+            except asyncio.CancelledError:
+                pass
         await ws_manager.stop_heartbeat()
         await ws_manager.close_all()
 
