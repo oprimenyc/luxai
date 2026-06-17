@@ -4,15 +4,16 @@ Security: Read-only market data access. No order submission. Writes only to
           shadow_trades table via ShadowModeService. Respects kill switch.
           source="auto_scanner" on every row for auditability.
 Scale: Single-tenant. Runs once at 9:31 AM ET on market days. Max 3 signals
-       per session. Tradier chain fetch is the bottleneck (~2–4s per symbol).
+       per session. Pre-filter (yfinance) is free and instant. TradingAgents
+       debate (~$0.0007/symbol) only fires when movement > 0.5%.
 
 Auto-Scanner — generates shadow trade candidates without user input.
 
-Purpose: give the shadow run real data without requiring daily manual
-workbench use. Scans a fixed watchlist at market open, scores each option
-chain, and inserts any high-quality candidate (score >= 7.0) as a shadow
-trade. This fulfills the shadow gate criterion of >= 5 intercepted trades
-without the platform owner needing to use the workbench every day.
+Signal flow (token-efficient):
+  1. yfinance pre-filter: skip symbols with < 0.5% price movement (free)
+  2. TradingAgents debate: DeepSeek analysts on filtered symbols only
+  3. Tradier chain fetch: only on BULLISH/BEARISH verdict >= 65% confidence
+  4. Shadow trade entry: logged with full metadata
 
 Design constraints (Tiny tier, <$500 account):
   - Max $5 risk per trade
@@ -43,7 +44,7 @@ SCANNER_WATCHLIST: list[str] = [
 
 # ── Thresholds ────────────────────────────────────────────────────────────────
 
-_MIN_SCORE = 7.0          # only emit signals above this quality bar
+_MIN_SCORE = 7.0          # adjustable by learning engine; floor enforced here
 _MAX_SIGNALS_PER_RUN = 3  # cap per day to avoid log pollution
 _TINY_MAX_RISK_USD = 5.0  # hard Tiny tier cap
 _MIN_DTE = 7              # per account tier rules
@@ -52,6 +53,8 @@ _MAX_DTE = 21             # per CLAUDE.md scoring spec
 # ── Scanner admin user (used for shadow_mode_config lookup) ──────────────────
 
 _SCANNER_USER_ID = "auto_scanner"
+_MIN_MOVEMENT_PCT = 0.5       # skip symbols with < 0.5% price change (saves tokens)
+_MIN_AGENT_CONFIDENCE = 0.65  # TradingAgents verdict must clear this bar
 
 
 class MarketScannerService:
@@ -69,6 +72,8 @@ class MarketScannerService:
         tradier_api_key: str,
         alpaca_api_key: str,
         alpaca_api_secret: str,
+        deepseek_api_key: str = "",
+        anthropic_api_key: str = "",
         tradier_sandbox: bool = False,
     ) -> None:
         self._redis = redis
@@ -76,6 +81,8 @@ class MarketScannerService:
         self._tradier_key = tradier_api_key
         self._alpaca_key = alpaca_api_key
         self._alpaca_secret = alpaca_api_secret
+        self._deepseek_key = deepseek_api_key
+        self._anthropic_key = anthropic_api_key
         self._tradier_sandbox = tradier_sandbox
 
     async def run_scan(self, user_id: str) -> int:
@@ -103,31 +110,57 @@ class MarketScannerService:
 
     async def _scan_symbol(self, symbol: str, user_id: str) -> int:
         """Scan one symbol. Returns 1 if a shadow trade was created, 0 otherwise."""
-        import httpx
+        from src.data.yfinance_client import YFinanceClient
         from src.options.tradier_client import TradierOptionsClient
         from src.trading.shadow import ShadowModeService
 
-        # ── Fetch current price from Alpaca ───────────────────────────────────
-        price: float = 0.0
-        async with httpx.AsyncClient(timeout=5.0) as client:
-            try:
-                resp = await client.get(
-                    f"https://data.alpaca.markets/v2/stocks/{symbol}/quotes/latest",
-                    headers={
-                        "APCA-API-KEY-ID": self._alpaca_key,
-                        "APCA-API-SECRET-KEY": self._alpaca_secret,
-                    },
-                )
-                if resp.status_code == 200:
-                    q = resp.json().get("quote", {})
-                    bid = float(q.get("bp", 0))
-                    ask = float(q.get("ap", 0))
-                    if bid > 0 and ask > 0:
-                        price = (bid + ask) / 2
-            except Exception as exc:
-                log.warning("auto_scanner_price_fetch_failed", symbol=symbol, error=str(exc)[:60])
+        yf = YFinanceClient(self._redis)
 
-        if price <= 0:
+        # ── Step 1: yfinance pre-filter (FREE, no tokens) ─────────────────────
+        movement_pct = await yf.price_moved_pct(symbol)
+        if movement_pct is None:
+            log.warning("auto_scanner_no_movement_data", symbol=symbol)
+            # Fall through — don't skip if yfinance is unavailable
+        elif movement_pct < _MIN_MOVEMENT_PCT:
+            log.info(
+                "auto_scanner_symbol_skipped",
+                symbol=symbol,
+                movement_pct=round(movement_pct, 3),
+                threshold=_MIN_MOVEMENT_PCT,
+            )
+            return 0
+
+        # ── Step 2: TradingAgents debate (DeepSeek, ~$0.0007) ────────────────
+        if self._deepseek_key:
+            from src.agents.trading_agents_adapter import TradingAgentsAdapter
+            adapter = TradingAgentsAdapter(
+                deepseek_api_key=self._deepseek_key,
+                anthropic_api_key=self._anthropic_key,
+            )
+            verdict = await adapter.run_debate(symbol)
+            log.info(
+                "auto_scanner_agent_verdict",
+                symbol=symbol,
+                verdict=verdict.verdict,
+                confidence=round(verdict.confidence, 3),
+            )
+            # Persist debate to workbench_analyses
+            await adapter.log_debate_to_supabase(verdict, user_id, self._supabase)
+
+            if not verdict.passes_threshold(_MIN_AGENT_CONFIDENCE):
+                log.info(
+                    "auto_scanner_verdict_rejected",
+                    symbol=symbol,
+                    verdict=verdict.verdict,
+                    confidence=verdict.confidence,
+                )
+                return 0
+        else:
+            log.info("auto_scanner_no_deepseek_key_skipping_debate", symbol=symbol)
+
+        # ── Step 3: Fetch current price (yfinance, free) ──────────────────────
+        price = await yf.get_price(symbol)
+        if not price or price <= 0:
             log.warning("auto_scanner_no_price", symbol=symbol)
             return 0
 
@@ -279,6 +312,8 @@ async def auto_scanner_loop(
     alpaca_api_key: str,
     alpaca_api_secret: str,
     redis_url: str,
+    deepseek_api_key: str = "",
+    anthropic_api_key: str = "",
     tradier_sandbox: bool = False,
 ) -> None:
     """
@@ -321,6 +356,8 @@ async def auto_scanner_loop(
                     tradier_api_key=tradier_api_key,
                     alpaca_api_key=alpaca_api_key,
                     alpaca_api_secret=alpaca_api_secret,
+                    deepseek_api_key=deepseek_api_key,
+                    anthropic_api_key=anthropic_api_key,
                     tradier_sandbox=tradier_sandbox,
                 )
                 await scanner.run_scan(user_id=user_id)

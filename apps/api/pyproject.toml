@@ -26,8 +26,11 @@ dependencies = [
   "prometheus-fastapi-instrumentator>=7.1.0",
   "redis>=5.2.0",
   "anyio>=4.9.0",
-  "websockets>=12.0",
+  "websockets>=13.0",
   "openai>=1.30.0",
+  "yfinance>=0.2.50",
+  # TradingAgents: multi-agent debate framework (DeepSeek analysts + risk gate)
+  "tradingagents @ git+https://github.com/TauricResearch/TradingAgents",
 ]
 
 [project.optional-dependencies]

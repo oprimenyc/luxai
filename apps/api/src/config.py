@@ -73,6 +73,9 @@ class Settings(BaseSettings):
     # ── Anthropic ────────────────────────────────────────────────────────
     anthropic_api_key: str = ""
 
+    # ── DeepSeek (TradingAgents analyst LLM — OpenAI-compat API) ────────────
+    deepseek_api_key: str = ""
+
     # ── LangSmith ────────────────────────────────────────────────────────
     langchain_api_key: str = ""
     langchain_tracing_v2: bool = False
