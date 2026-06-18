@@ -43,6 +43,10 @@ dev = [
   "mypy>=1.15.0",
 ]
 
+[tool.hatch.metadata]
+# Required: allows tradingagents git URL in project.dependencies
+allow-direct-references = true
+
 [tool.hatch.build.targets.wheel]
 packages = ["src"]
 
