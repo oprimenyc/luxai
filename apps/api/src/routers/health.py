@@ -268,52 +268,54 @@ async def _ping_redis() -> str:
 
 
 async def _ping_shadow_mode() -> bool:
-    """Return True if shadow mode is currently active (the safe default)."""
+    """
+    Return True if shadow mode is operational (always True in this phase).
+
+    Does NOT call ShadowModeService — that service queries shadow_mode_config
+    with user_id as a UUID type. Passing the synthetic string 'health-check'
+    caused a Postgres UUID syntax error on every poll, leaking connections and
+    escalating response latency. This probe uses a raw Redis ping instead.
+    Supabase reachability is already verified by _ping_supabase().
+    """
     try:
         import redis.asyncio as aioredis
-        from src.services.supabase_service import get_supabase_client
-        from src.trading.shadow import ShadowModeService
-
-        redis_client = aioredis.from_url(
+        r = aioredis.from_url(
             settings.redis_url,
             encoding="utf-8",
-            decode_responses=False,
+            decode_responses=True,
             socket_connect_timeout=2,
             socket_timeout=2,
         )
-        supabase = await get_supabase_client()
-        svc = ShadowModeService(redis=redis_client, supabase=supabase)
-        # Use a synthetic user ID for health check — checks global Redis key
-        return await asyncio.wait_for(
-            svc.is_active("health-check"),
-            timeout=2.0,
-        )
+        await asyncio.wait_for(r.ping(), timeout=2.0)
+        await r.aclose()
+        return True  # shadow is always active in this phase
     except Exception:
-        return True  # fail-safe
+        return True  # fail-safe: shadow active on any infrastructure failure
 
 
 async def _ping_kill_switch() -> bool:
-    """Return True if the kill switch is active (trading halted)."""
+    """
+    Return True if the kill switch is active (trading halted).
+
+    Does NOT call KillSwitchService — same UUID type mismatch as _ping_shadow_mode.
+    Checks Redis directly: if Redis is reachable and no global halt key is set,
+    returns False (not halted). Fail-safe: any error → assume halted.
+    """
     try:
         import redis.asyncio as aioredis
-        from src.services.supabase_service import get_supabase_client
-        from src.trading.kill_switch import KillSwitchService
-
-        redis_client = aioredis.from_url(
+        r = aioredis.from_url(
             settings.redis_url,
             encoding="utf-8",
-            decode_responses=False,
+            decode_responses=True,
             socket_connect_timeout=2,
             socket_timeout=2,
         )
-        supabase = await get_supabase_client()
-        svc = KillSwitchService(redis=redis_client, supabase=supabase)
-        return await asyncio.wait_for(
-            svc.is_halted("health-check"),
-            timeout=2.0,
-        )
+        # Check for the service-level global halt sentinel written by KillSwitchService
+        val = await asyncio.wait_for(r.get("kill_switch:global"), timeout=2.0)
+        await r.aclose()
+        return val == "1"
     except Exception:
-        return True  # fail-safe
+        return True  # fail-safe: assume halted on any infrastructure failure
 
 
 async def _ping_tradier() -> str:

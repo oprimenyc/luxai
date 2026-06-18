@@ -170,7 +170,9 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     auto_scanner: asyncio.Task[None] | None = None
     _alpaca_key = getattr(settings, "alpaca_api_key", "")
     _tradier_key = getattr(settings, "tradier_api_key", "")
-    _scanner_user = getattr(settings, "scanner_user_id", "auto_scanner")
+    # Reserved UUID for the scanner service identity — must be a valid UUID
+    # because shadow_trades.user_id is a UUID column.
+    _scanner_user = getattr(settings, "scanner_user_id", "00000000-0000-0000-0000-000000000001")
     if _alpaca_key and _tradier_key:
         auto_scanner = asyncio.create_task(
             auto_scanner_loop(

@@ -51,8 +51,10 @@ _MIN_DTE = 7              # per account tier rules
 _MAX_DTE = 21             # per CLAUDE.md scoring spec
 
 # ── Scanner admin user (used for shadow_mode_config lookup) ──────────────────
-
-_SCANNER_USER_ID = "auto_scanner"
+# Reserved UUID for the auto-scanner service identity.
+# shadow_trades.user_id and shadow_mode_config.user_id are UUID columns —
+# passing the plain string "auto_scanner" caused every insert to fail silently.
+_SCANNER_USER_ID = "00000000-0000-0000-0000-000000000001"
 _MIN_MOVEMENT_PCT = 0.5       # skip symbols with < 0.5% price change (saves tokens)
 _MIN_AGENT_CONFIDENCE = 0.65  # TradingAgents verdict must clear this bar
 
