@@ -18,6 +18,7 @@ from src.memory.router import router as memory_router
 from src.middleware.logging import LoggingMiddleware
 from src.middleware.request_id import RequestIDMiddleware
 from src.routers import agents, health, sessions
+from src.routers.settings import router as settings_router
 from src.security.middleware import RateLimitMiddleware, SecurityHeadersMiddleware
 from src.telemetry.setup import configure_logging, configure_tracing, instrument_app
 from src.websocket.gateway import router as ws_router
@@ -260,6 +261,7 @@ def create_app() -> FastAPI:
     app.include_router(workflows_router, prefix="/api/v1")
     app.include_router(trading_router, prefix="/api/v1")
     app.include_router(workbench_router, prefix="/api/v1")
+    app.include_router(settings_router, prefix="/api/v1")
     app.include_router(ws_router, prefix="/api/v1")
 
     return app

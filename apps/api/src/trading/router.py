@@ -232,6 +232,18 @@ async def submit_order(
     """
     user_id_str = str(user.user_id)
 
+    # ── Gate 0: Absolute hard walls ──────────────────────────────────────────
+    # These checks cannot be loosened by any settings, shadow overrides, or UI.
+    # They represent permanent safety invariants of the paper-trading system.
+
+    # 0DTE options are prohibited at every tier, in every mode, forever.
+    if body.dte is not None and body.dte < 1:
+        log.warning("order_rejected_0dte", user_id=user_id_str, dte=body.dte)
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="0DTE options are prohibited. Minimum DTE is 1.",
+        )
+
     # ── Gate 1: Kill switch ──────────────────────────────────────────────────
     if await kill_switch.is_halted(user_id_str):
         log.warning("order_rejected_kill_switch_active", user_id=user_id_str)

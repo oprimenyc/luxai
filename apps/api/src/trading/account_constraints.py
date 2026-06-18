@@ -5,8 +5,12 @@ Path: apps/api/src/trading/account_constraints.py
 Security: These limits CANNOT be bypassed by any strategy, agent, or UI.
           Enforcement is at the engine level, not the UI level.
           Any violation is logged with structured fields for audit.
+          CRITICAL: shadow overrides NEVER apply to live order submission.
+          They are only used by scanner/workbench analysis during shadow mode.
 Scale: Pure Python, no I/O. O(1) check. Designed to be called on every
        order submission before it reaches the broker adapter.
+       load_shadow_overrides() has I/O; cache the result rather than calling
+       it on every check().
 
 Tier definitions from CLAUDE.md:
   Tiny      $0 – $499.99
@@ -219,3 +223,57 @@ def get_account_enforcer() -> AccountConstraintEnforcer:
     if _enforcer is None:
         _enforcer = AccountConstraintEnforcer()
     return _enforcer
+
+
+# ── Shadow testing overrides ──────────────────────────────────────────────────
+
+
+@dataclass(frozen=True)
+class ShadowTestingOverrides:
+    """
+    Relaxed limits used ONLY during shadow mode signal evaluation.
+
+    These values are read from account_settings (Supabase) and applied by
+    the scanner/workbench to allow testing a wider range of contracts in paper
+    mode. They are NEVER applied to live order submission.
+    """
+    min_dte: int = 3
+    max_dte: int = 21
+    max_contracts: int = 3
+    max_risk_usd: float = 15.0
+    allow_earnings: bool = False
+    score_threshold: float = 7.0
+
+    @classmethod
+    def defaults(cls) -> "ShadowTestingOverrides":
+        return cls()
+
+
+async def load_shadow_overrides(user_id: str, supabase: Any) -> ShadowTestingOverrides:
+    """
+    Fetch shadow testing overrides from account_settings for the given user.
+    Falls back to defaults if no row exists or the fetch fails.
+
+    Caller should cache the result to avoid per-request DB reads.
+    """
+    try:
+        res = await supabase.table("account_settings").select(
+            "shadow_min_dte,shadow_max_dte,shadow_max_contracts,"
+            "shadow_max_risk_usd,shadow_allow_earnings,score_threshold"
+        ).eq("user_id", user_id).execute()
+        row = (res.data or [None])[0]
+    except Exception:
+        log.warning("shadow_overrides_fetch_failed", user_id=user_id)
+        return ShadowTestingOverrides.defaults()
+
+    if row is None:
+        return ShadowTestingOverrides.defaults()
+
+    return ShadowTestingOverrides(
+        min_dte=row["shadow_min_dte"],
+        max_dte=row["shadow_max_dte"],
+        max_contracts=row["shadow_max_contracts"],
+        max_risk_usd=float(row["shadow_max_risk_usd"]),
+        allow_earnings=row["shadow_allow_earnings"],
+        score_threshold=float(row["score_threshold"]),
+    )
