@@ -377,7 +377,8 @@ async def auto_scanner_loop(
 def _seconds_until_market_open() -> float:
     """
     Return seconds until 9:31 AM US/Eastern on the next market day.
-    Uses a fixed UTC offset of -4 (EDT). Handles DST approximately.
+    Uses ZoneInfo("America/New_York") — DST-aware, no fixed offset.
+    Current equivalent: 13:31 UTC (EDT, summer). 14:31 UTC in winter (EST).
     """
     from zoneinfo import ZoneInfo
     et = ZoneInfo("America/New_York")
