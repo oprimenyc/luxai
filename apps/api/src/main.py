@@ -9,7 +9,6 @@ import uvicorn
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
-from prometheus_fastapi_instrumentator import Instrumentator
 
 from src.config import settings
 from src.events.bus import event_bus
@@ -247,12 +246,6 @@ def create_app() -> FastAPI:
     )
     app.add_middleware(RequestIDMiddleware)
     app.add_middleware(LoggingMiddleware)
-
-    # ── Observability ────────────────────────────────────────────────────
-    Instrumentator(
-        should_group_status_codes=False,
-        excluded_handlers=["/api/health", "/api/metrics"],
-    ).instrument(app).expose(app, endpoint="/api/metrics", include_in_schema=False)
 
     # ── Routers ──────────────────────────────────────────────────────────
     app.include_router(health.router)
