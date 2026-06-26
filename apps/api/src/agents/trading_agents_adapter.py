@@ -203,21 +203,32 @@ class TradingAgentsAdapter:
         user_id: str,
         supabase: "AsyncClient",
     ) -> None:
-        """Persist the full debate result to workbench_analyses for audit trail."""
+        """Persist the full debate result to scanner_debates.
+
+        Note: workbench_analyses uses a different schema (direction, expiration,
+        budget_usd, verdict IN ('accept','caution','reject')) that is incompatible
+        with TradingAgents output. scanner_debates is the correct target table.
+        """
         try:
-            await supabase.table("workbench_analyses").insert({
+            await supabase.table("scanner_debates").insert({
                 "user_id": user_id,
+                "scan_date": verdict.analysis_date,
                 "symbol": verdict.symbol,
-                "source": "trading_agents_debate",
-                "analysis_date": verdict.analysis_date,
                 "verdict": verdict.verdict,
                 "confidence": verdict.confidence,
                 "reasoning": verdict.reasoning,
-                "raw_output": verdict.raw_decision,
                 "token_input": verdict.token_input,
                 "token_output": verdict.token_output,
+                "raw_decision": verdict.raw_decision,
                 "created_at": datetime.now(UTC).isoformat(),
             }).execute()
+            log.info(
+                "trading_agents_debate_logged",
+                symbol=verdict.symbol,
+                verdict=verdict.verdict,
+                confidence=round(verdict.confidence, 3),
+                token_input=verdict.token_input,
+            )
         except Exception as exc:
             # Non-fatal — scan continues even if Supabase log fails
             log.warning("trading_agents_log_failed", symbol=verdict.symbol, error=str(exc)[:80])

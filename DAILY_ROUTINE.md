@@ -1,60 +1,165 @@
-# Daily Routine — LuxAI OS Shadow Run
+# LuxAI OS — Daily Shadow Run Routine
+
+For use during the shadow run (Run 4: 2026-06-27 to 2026-07-15).
 
 ---
 
-## MARKET DAYS (Mon–Fri)
+## Every Morning (9:15–9:30 AM ET, before market open)
 
-### Morning (5 minutes, optional but counts toward gate):
+### 1. Health check (30 seconds)
 
-1. Open the app and check the shadow mode banner — it should show "Shadow Mode Active"
-2. If you have a trade idea from news or research: use the workbench — enter symbol, direction, expiry, budget. Takes 30 seconds.
-3. Check if the shadow monitor closed any trades overnight — look at the P&L summary in the banner
+```bash
+curl -s https://luxai-api.fly.dev/api/v1/health | python -m json.tool
+```
 
-### That's it. The scanner runs at 9:31 AM without you.
+Confirm:
 
----
+- `supabase`, `redis`, `tradier`, `alpaca` all `"ok"`
+- `shadow_mode: true`
+- `kill_switch: false`
+- `scanner_alert: null` (if non-null, investigate immediately)
 
-## OPTIONAL — When You Have a Specific Tip:
+If any service shows `"error"`, check Fly logs before market open:
 
-1. Go to the Trade Idea Workbench
-2. Enter: symbol, bullish/bearish, expiration date (7–21 days out), budget ($5 max for Tiny tier)
-3. Review the verdict and score
-4. If verdict is "accept" or "caution", the analysis is logged automatically
-5. You can then submit it as an order — it will be intercepted as a shadow trade
-
----
-
-## WEEKLY (Saturdays — 15 minutes):
-
-1. Review the shadow P&L summary: total trades, hit rate, P&L
-2. Check that the auto-scanner is producing signals (at least 1–2 shadow trades per week)
-3. Note any symbols that keep triggering — that's signal quality data for the journal
+```bash
+flyctl logs --app luxai-api --no-tail 2>&1 | grep -v "GET /api" | tail -50
+```
 
 ---
 
-## DAY 7 AND DAY 14 (Required for gate):
+### 2. Morning tip validation (5–10 minutes)
 
-1. Run the shadow report generator (if wired) or manually review:
-   - Total shadow trades logged
-   - Hit rate (must be 40–75%)
-   - Any kill switch events (must be zero)
-   - Health endpoint status
-2. Write a brief journal note: "Signal quality looks X, hit rate is Y%, no anomalies / anomaly noted"
-3. On Day 14: complete the full journal audit before any live trading discussion
+Submit at least **one manual workbench analysis per day** until 10 total are logged.
+This ensures the gate criterion is met even if scanner signals are scarce.
+
+**How to submit:**
+
+1. Open the web UI at https://luxai-web-snowy.vercel.app
+2. Navigate to Trade Idea Workbench
+3. Enter a tip:
+   - Symbol: any of SPY / QQQ / NVDA / TSLA / AAPL
+   - Direction: bullish or bearish (your call based on pre-market)
+   - Budget: $15 (shadow testing limit)
+   - Source: manual
+4. Submit — the workbench will fetch the chain, score it, and return 3 alternatives
+5. Confirm the row appears in Supabase:
+
+```sql
+SELECT id, symbol, direction, verdict, analyzed_at
+FROM workbench_analyses
+ORDER BY analyzed_at DESC LIMIT 5;
+```
+
+**Target: 10 total by 2026-07-07 (Day 7 checkpoint)**
 
 ---
 
-## WHAT RUNS WITHOUT YOU:
+## After Market Close (4:15–4:30 PM ET)
 
-- **Auto-scanner** — 9:31 AM ET every market day, scans SPY/QQQ/TSLA/NVDA/AAPL/META/AMZN, creates up to 3 shadow trade entries if any option scores >= 7.0/10
-- **Shadow trade monitor** — every 60 seconds, closes any trade that hits -5% stop-loss or +10% take-profit
-- **P&L aggregation** — runs automatically every time a trade closes
-- **Shadow mode enforcement** — all order submissions are intercepted until admin manually deactivates shadow mode
+### 3. Check today's scanner run
 
-## WHAT NEEDS YOUR INPUT:
+After 9:31 AM ET the scanner fires. By end of day, `scanner_daily_log` should have a row for today.
 
-- Workbench analyses (10 required over 14 days — roughly 1 per weekday)
-- Day 7 and Day 14 shadow reports
-- Journal audit on Day 14
-- Admin gate confirmation before any live trading discussion
-- Deploying new code when changes are made
+```sql
+SELECT scan_date, symbols_scanned, signals_generated, debates_completed,
+       deepseek_available, zero_signal_streak, scanner_alert
+FROM scanner_daily_log
+ORDER BY scan_date DESC LIMIT 7;
+```
+
+Expected per day:
+
+- `symbols_scanned`: 7 (or fewer if signal cap hit)
+- `signals_generated`: 0–3
+- `debates_completed`: > 0 if DeepSeek key is set
+- `scanner_alert`: null (healthy)
+
+Also check shadow trades:
+
+```sql
+SELECT symbol, side, status, intended_entry_price, created_at, metadata
+FROM shadow_trades
+ORDER BY created_at DESC LIMIT 10;
+```
+
+### 4. Check scanner debates (if DeepSeek enabled)
+
+```sql
+SELECT scan_date, symbol, verdict, confidence, token_input
+FROM scanner_debates
+ORDER BY created_at DESC LIMIT 14;
+```
+
+---
+
+## Weekly (Monday morning)
+
+### 5. Gate criteria review
+
+Run the full gate status query:
+
+```sql
+SELECT
+  (SELECT COUNT(*) FROM workbench_analyses) AS analyses,
+  (SELECT COUNT(*) FROM shadow_trades) AS shadow_trades,
+  (SELECT COUNT(*) FROM shadow_trades WHERE status = 'closed') AS closed_trades,
+  (SELECT COUNT(*) FROM system_halts) AS halts,
+  (SELECT COUNT(*) FROM scanner_daily_log) AS scan_days;
+```
+
+Update `SHADOW_RUN_LOG.md` with current counts.
+
+---
+
+## If Zero Signals for 3+ Days
+
+The health endpoint will show `scanner_alert` with the streak count.
+
+**Investigate:**
+
+1. Check `scanner_daily_log.errors` column for the affected dates
+2. Check Tradier sandbox connectivity: `curl https://sandbox.tradier.com/v1/markets/clock -H "Authorization: Bearer $TRADIER_API_KEY"`
+3. Check yfinance data: are prices being fetched? (`auto_scanner_no_movement_data` in Fly logs)
+4. Check if `deepseek_available` is `false` — if so, confirm `DEEPSEEK_API_KEY` is still set
+
+**Quick log check:**
+
+```bash
+flyctl logs --app luxai-api --no-tail 2>&1 | grep "auto_scanner" | tail -30
+```
+
+---
+
+## Fly Log Reference
+
+Healthy scanner sequence (one per market day at ~13:31 UTC):
+
+```
+auto_scanner_loop_started
+auto_scanner_sleeping  (seconds until 9:31 AM ET)
+... [next day] ...
+auto_scanner_starting
+auto_scanner_symbol_skipped  (if movement < 0.5%)
+auto_scanner_agent_verdict   (if DeepSeek key set)
+auto_scanner_signal_created  OR auto_scanner_no_qualifying_contract
+auto_scanner_complete
+auto_scanner_daily_log_written
+auto_scanner_sleeping  (23h until next day)
+```
+
+---
+
+## Gate Criteria Summary
+
+All must be met by **2026-07-15**:
+
+| Criterion                | How to meet it                                   |
+| ------------------------ | ------------------------------------------------ |
+| ≥ 10 workbench analyses  | 1 manual tip per morning (10 days)               |
+| ≥ 5 shadow trades logged | Auto-scanner fires daily; should produce 1–3/day |
+| 40–75% hit rate          | Requires some trades to close with P&L           |
+| 0 kill switch triggers   | Automatic — just don't force-set the kill switch |
+| Health green throughout  | Auto-monitor — check daily health curl           |
+| Day 7 report (Jul 7)     | Run audit, update SHADOW_RUN_LOG.md              |
+| Day 14 report (Jul 15)   | Run audit, update SHADOW_RUN_LOG.md              |
+| Admin journal audit      | Manual review of signal quality                  |

@@ -204,6 +204,11 @@ class TradingHealthResponse(BaseModel):
     alpaca: str             # "ok" | "error"
     version: str
     phase: str
+    # Scanner observability — populated from Redis after each daily scan
+    last_scan_date: str | None = None     # ISO date of last completed scan
+    last_scan_signals: int | None = None  # signals generated on last scan
+    scanner_errors_today: int | None = None
+    scanner_alert: str | None = None      # set when zero_signal_streak >= 3
 
 
 @router.get("/api/v1/health", response_model=TradingHealthResponse)
@@ -222,6 +227,7 @@ async def trading_health() -> TradingHealthResponse:
         _ping_kill_switch(),
         _ping_tradier(),
         _ping_alpaca(),
+        _ping_scanner_status(),
         return_exceptions=True,
     )
 
@@ -230,6 +236,8 @@ async def trading_health() -> TradingHealthResponse:
 
     def _bool(r: Any) -> bool:
         return r if isinstance(r, bool) else True  # fail-safe: assume halted/active
+
+    scanner_status: dict[str, Any] = results[6] if isinstance(results[6], dict) else {}
 
     return TradingHealthResponse(
         supabase=_str(results[0]),
@@ -240,17 +248,22 @@ async def trading_health() -> TradingHealthResponse:
         alpaca=_str(results[5]),
         version=settings.app_version,
         phase="B3-complete",
+        last_scan_date=scanner_status.get("last_scan_date"),
+        last_scan_signals=scanner_status.get("last_scan_signals"),
+        scanner_errors_today=scanner_status.get("scanner_errors_today"),
+        scanner_alert=scanner_status.get("scanner_alert"),
     )
 
 
 async def _ping_supabase() -> str:
+    # acreate_client() itself makes network calls — wrap the entire probe in a
+    # 4s hard timeout so slow Supabase initialisation cannot block the health
+    # endpoint beyond Fly's 5s check window.
     try:
-        from src.services.supabase_service import get_supabase_client
-        client = await get_supabase_client()
-        await asyncio.wait_for(
-            client.table("shadow_mode_config").select("id").limit(1).execute(),
-            timeout=3.0,
-        )
+        async with asyncio.timeout(4.0):
+            from src.services.supabase_service import get_supabase_client
+            client = await get_supabase_client()
+            await client.table("shadow_mode_config").select("id").limit(1).execute()
         return "ok"
     except Exception:
         return "error"
@@ -334,6 +347,36 @@ async def _ping_tradier() -> str:
             return "ok" if resp.status_code < 400 else "error"
     except Exception:
         return "error"
+
+
+async def _ping_scanner_status() -> dict[str, Any]:
+    """Read last scan metadata from Redis. Returns empty dict on any failure."""
+    try:
+        import redis.asyncio as aioredis
+        r = aioredis.from_url(
+            settings.redis_url,
+            encoding="utf-8",
+            decode_responses=True,
+            socket_connect_timeout=2,
+            socket_timeout=2,
+        )
+        keys = [
+            "scanner:last_scan_date",
+            "scanner:last_scan_signals",
+            "scanner:last_scan_errors",
+            "scanner:alert",
+        ]
+        values = await asyncio.wait_for(r.mget(*keys), timeout=2.0)
+        await r.aclose()
+        last_date, last_signals, last_errors, alert = values
+        return {
+            "last_scan_date": last_date,
+            "last_scan_signals": int(last_signals) if last_signals is not None else None,
+            "scanner_errors_today": int(last_errors) if last_errors is not None else None,
+            "scanner_alert": alert,
+        }
+    except Exception:
+        return {}
 
 
 async def _ping_alpaca() -> str:
