@@ -42,6 +42,17 @@ dev = [
   "ruff>=0.11.0",
   "mypy>=1.15.0",
 ]
+backtest = [
+  # Lumibot: backtesting + paper trading framework with portfolio management and
+  # lifecycle hooks. Used by packages/backtest/ only — NOT imported at server runtime.
+  # Does not replace scanner.py (Lumibot's sync loop can't embed in FastAPI lifespan).
+  "lumibot>=4.5.0",
+  # optopsy: options-specific backtest metrics — DTE/delta win-rate sweeps.
+  # NOTE: optopsy 2.x is a beta package requiring real historical options chain CSVs
+  # (CBOE, Think or Swim format). Not compatible with yfinance live data.
+  # Install: pip install optopsy==2.0.0b6  (PyPI slug, last release 2021)
+  "optopsy>=2.0.0b6",
+]
 
 [tool.hatch.metadata]
 # Required: allows tradingagents git URL in project.dependencies
