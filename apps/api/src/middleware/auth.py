@@ -46,7 +46,8 @@ async def get_current_user(
         )
         user_id = payload.get("sub")
         email = payload.get("email", "")
-        role = payload.get("role", "authenticated")
+        app_metadata = payload.get("app_metadata") or {}
+        role = app_metadata.get("role") or payload.get("role", "authenticated")
 
         if not user_id:
             raise HTTPException(

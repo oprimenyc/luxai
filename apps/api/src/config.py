@@ -87,6 +87,10 @@ class Settings(BaseSettings):
     # raise an error if a live account is detected.
     alpaca_api_key: str = ""
     alpaca_api_secret: str = ""
+    # Explicit paper-mode intent flag. Defaults to True (safe default).
+    # Startup verification in src/core/startup_checks.py refuses to boot
+    # if this is False, or if the live Alpaca account is not paper_trading.
+    alpaca_paper: bool = True
 
     # ── Tradier (future integration) ─────────────────────────────────────
     tradier_api_key: str = ""

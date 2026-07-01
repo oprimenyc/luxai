@@ -1,4 +1,13 @@
-"""Governance API endpoints — RBAC, approvals, kill switch."""
+"""
+Governance API endpoints — RBAC, approvals, kill switch.
+
+Path: apps/api/src/governance/router.py
+Security: Approval resolution is limited to the requesting user or an admin.
+          Governance kill-switch activation is admin-only. JWT role checks read
+          the Supabase admin claim from app_metadata, not user-writable fields.
+Scale: In-memory approval gate for single-instance runtime; revisit if the
+       orchestrator becomes multi-instance.
+"""
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
@@ -9,7 +18,7 @@ from src.governance.models import (
     ApprovalStatus,
     RiskAssessment,
 )
-from src.middleware.auth import AuthenticatedUser, get_current_user
+from src.middleware.auth import AuthenticatedUser, get_admin_user, get_current_user
 
 router = APIRouter(prefix="/governance", tags=["governance"])
 
@@ -61,6 +70,19 @@ async def resolve_approval(
     request: ResolveApprovalRequest,
     current_user: AuthenticatedUser = Depends(get_current_user),
 ) -> ApprovalRequest:
+    pending = approval_gate.get_pending(session_id)
+    if pending is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Approval request not found or expired",
+        )
+
+    if not current_user.is_admin and pending.user_id != str(current_user.user_id):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You may only resolve your own approval requests.",
+        )
+
     result = await approval_gate.resolve(
         session_id=session_id,
         approved=request.approved,
@@ -78,7 +100,7 @@ async def resolve_approval(
 @router.post("/kill-switch", status_code=status.HTTP_200_OK)
 async def activate_kill_switch(
     request: KillSwitchRequest,
-    current_user: AuthenticatedUser = Depends(get_current_user),
+    current_user: AuthenticatedUser = Depends(get_admin_user),
 ) -> dict:
     await approval_gate.activate_kill_switch(
         session_ids=request.session_ids,

@@ -11,6 +11,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
 
 from src.config import settings
+from src.core.startup_checks import verify_alpaca_paper_mode
 from src.events.bus import event_bus
 from src.governance.router import router as governance_router
 from src.memory.router import router as memory_router
@@ -152,6 +153,11 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         environment=settings.environment,
         version=settings.app_version,
     )
+
+    # Fail-closed boot gate — must run before any background task or route
+    # can submit an order. Raising here aborts startup entirely.
+    await verify_alpaca_paper_mode(settings)
+
     ws_manager.start_heartbeat()
 
     # asyncio.create_task — task: shadow_trade_monitor

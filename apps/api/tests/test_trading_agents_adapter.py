@@ -126,7 +126,7 @@ async def test_log_debate_to_supabase_success() -> None:
     adapter = TradingAgentsAdapter(deepseek_api_key="key", anthropic_api_key="ant")
     await adapter.log_debate_to_supabase(verdict, "user-123", mock_supabase)
 
-    mock_supabase.table.assert_called_once_with("workbench_analyses")
+    mock_supabase.table.assert_called_once_with("scanner_debates")
     mock_table.insert.assert_called_once()
 
 

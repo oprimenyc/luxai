@@ -72,10 +72,14 @@ class TestGetCurrentUser:
         secret = "test-secret-key-for-unit-tests-only"
         uid = "12345678-1234-5678-1234-567812345678"
         token = jose_jwt.encode(
-            {"sub": uid, "email": "test@example.com", "role": "authenticated"},
+            {
+                "sub": uid,
+                "email": "test@example.com",
+                "role": "authenticated",
+                "aud": "authenticated",
+            },
             secret,
             algorithm="HS256",
-            audience="authenticated",
         )
 
         # Patch settings to use the test secret
@@ -88,6 +92,32 @@ class TestGetCurrentUser:
         assert user.email == "test@example.com"
         assert str(user.user_id) == uid
         assert user.role == "authenticated"
+
+    async def test_app_metadata_admin_role_takes_precedence(self) -> None:
+        from jose import jwt as jose_jwt
+        from unittest.mock import patch
+
+        secret = "test-secret-key-for-unit-tests-only"
+        uid = "12345678-1234-5678-1234-567812345678"
+        token = jose_jwt.encode(
+            {
+                "sub": uid,
+                "email": "admin@example.com",
+                "role": "authenticated",
+                "aud": "authenticated",
+                "app_metadata": {"role": "admin"},
+            },
+            secret,
+            algorithm="HS256",
+        )
+
+        with patch("src.middleware.auth.settings") as mock_settings:
+            mock_settings.supabase_jwt_secret = secret
+            creds = HTTPAuthorizationCredentials(scheme="Bearer", credentials=token)
+            user = await get_current_user(creds)
+
+        assert user.role == "admin"
+        assert user.is_admin is True
 
     async def test_invalid_jwt_raises_401(self) -> None:
         from unittest.mock import patch
@@ -106,10 +136,13 @@ class TestGetCurrentUser:
 
         secret = "test-secret"
         token = jose_jwt.encode(
-            {"email": "test@example.com", "role": "authenticated"},
+            {
+                "email": "test@example.com",
+                "role": "authenticated",
+                "aud": "authenticated",
+            },
             secret,
             algorithm="HS256",
-            audience="authenticated",
         )
         with patch("src.middleware.auth.settings") as mock_settings:
             mock_settings.supabase_jwt_secret = secret

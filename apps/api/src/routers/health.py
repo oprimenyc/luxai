@@ -132,10 +132,10 @@ async def _check_supabase() -> ServiceStatus:
     start = time.monotonic()
     try:
         from src.services.supabase_service import get_supabase_client
-        client = get_supabase_client()
-        # Lightweight ping — just read the health endpoint
+        client = await get_supabase_client()
+        # Lightweight ping — probe a table that exists in the production shadow stack.
         await asyncio.wait_for(
-            client.table("agents").select("id").limit(1).execute(),
+            client.table("shadow_mode_config").select("id").limit(1).execute(),
             timeout=3.0,
         )
         return ServiceStatus(

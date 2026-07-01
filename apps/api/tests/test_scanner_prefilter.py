@@ -81,7 +81,7 @@ def test_next_friday_in_range_returns_none_when_no_friday() -> None:
 
 @pytest.mark.asyncio
 async def test_scan_symbol_skipped_on_low_movement() -> None:
-    """Symbols with < 0.5% movement return 0 without calling TradingAgents."""
+    """Symbols with < 0.5% movement return no signal and mark the symbol skipped."""
     scanner = _make_scanner(deepseek_api_key="fake-key")
 
     # Return 0.1% movement — below threshold
@@ -92,7 +92,7 @@ async def test_scan_symbol_skipped_on_low_movement() -> None:
     ):
         result = await scanner._scan_symbol("SPY", "test-user")
 
-    assert result == 0
+    assert result == (0, True)
 
 
 @pytest.mark.asyncio
@@ -125,7 +125,7 @@ async def test_scan_symbol_proceeds_on_high_movement() -> None:
         # Neutral verdict → no shadow trade created
         result = await scanner._scan_symbol("NVDA", "test-user")
 
-    assert result == 0  # NEUTRAL verdict, no shadow trade
+    assert result == (0, False)  # NEUTRAL verdict, no shadow trade
 
 
 @pytest.mark.asyncio
@@ -147,4 +147,4 @@ async def test_scan_symbol_no_deepseek_key_skips_debate() -> None:
     ):
         result = await scanner._scan_symbol("SPY", "test-user")
 
-    assert result == 0  # no price → no shadow trade
+    assert result == (0, False)  # no price → no shadow trade

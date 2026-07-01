@@ -18,6 +18,7 @@ import asyncio
 from datetime import UTC, date, datetime
 from typing import Any, Literal
 
+import httpx
 import redis.asyncio as aioredis
 import structlog
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -54,7 +55,10 @@ class WorkbenchRequest(BaseModel):
     account_size_usd: float = Field(
         gt=0,
         le=1_000_000,
-        description="Current account equity. Used for tier classification and constraint checks.",
+        description=(
+            "Deprecated client hint. The server derives account equity from the "
+            "paper broker account to prevent tier spoofing."
+        ),
     )
     source: str | None = Field(
         default=None,
@@ -173,7 +177,8 @@ async def analyze_trade_idea(
         )
 
     symbol = body.symbol.upper()
-    account_tier = classify_tier(body.account_size_usd).value
+    account_size_usd = await _fetch_paper_account_equity()
+    account_tier = classify_tier(account_size_usd).value
 
     log.info(
         "workbench_analyze_start",
@@ -182,6 +187,8 @@ async def analyze_trade_idea(
         direction=body.direction,
         expiration=body.expiration.isoformat(),
         budget=body.budget_usd,
+        requested_account_size=body.account_size_usd,
+        resolved_account_size=account_size_usd,
         tier=account_tier,
     )
 
@@ -351,7 +358,7 @@ async def analyze_trade_idea(
             "direction": result.direction,
             "expiration": result.expiration,
             "budget_usd": result.budget_usd,
-            "account_size_usd": body.account_size_usd,
+            "account_size_usd": account_size_usd,
             "account_tier": result.account_tier,
             "source": body.source,
             "underlying_price": result.underlying_price,
@@ -373,6 +380,62 @@ async def analyze_trade_idea(
         log.warning("workbench_audit_persist_failed", user=user_id, error=str(exc)[:120])
 
     return result
+
+
+async def _fetch_paper_account_equity() -> float:
+    """
+    Resolve account equity from Alpaca paper trading, never from request input.
+
+    The workbench uses equity only for tier classification and budget/risk
+    context, but the value still needs to be authoritative to prevent callers
+    from spoofing themselves into a different tier.
+    """
+    alpaca_key = getattr(settings, "alpaca_api_key", "")
+    alpaca_secret = getattr(settings, "alpaca_api_secret", "")
+    if not alpaca_key or not alpaca_secret:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Alpaca paper trading credentials not configured for account sizing.",
+        )
+
+    try:
+        async with httpx.AsyncClient(timeout=5.0) as client:
+            resp = await client.get(
+                "https://paper-api.alpaca.markets/v2/account",
+                headers={
+                    "APCA-API-KEY-ID": alpaca_key,
+                    "APCA-API-SECRET-KEY": alpaca_secret,
+                },
+            )
+            resp.raise_for_status()
+            account = resp.json()
+    except httpx.HTTPError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Unable to resolve paper account equity from Alpaca.",
+        ) from exc
+
+    if not account.get("paper", account.get("paper_trading", False)):
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Configured Alpaca account is not a paper trading account.",
+        )
+
+    try:
+        equity = float(account["equity"])
+    except (KeyError, TypeError, ValueError) as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Paper account equity unavailable from Alpaca.",
+        ) from exc
+
+    if equity <= 0:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Paper account equity must be positive for workbench analysis.",
+        )
+
+    return equity
 
 
 # ══════════════════════════════════════════════════════════════════════════════
