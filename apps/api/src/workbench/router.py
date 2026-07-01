@@ -18,13 +18,13 @@ import asyncio
 from datetime import UTC, date, datetime
 from typing import Any, Literal
 
-import httpx
 import redis.asyncio as aioredis
 import structlog
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
 
 from src.config import settings
+from src.core.startup_checks import AlpacaPaperModeError, resolve_paper_account
 from src.middleware.auth import AuthenticatedUser, get_current_user
 from src.options.scorer import OptionsScorer
 from src.options.tradier_client import TradierOptionsClient
@@ -399,27 +399,12 @@ async def _fetch_paper_account_equity() -> float:
         )
 
     try:
-        async with httpx.AsyncClient(timeout=5.0) as client:
-            resp = await client.get(
-                "https://paper-api.alpaca.markets/v2/account",
-                headers={
-                    "APCA-API-KEY-ID": alpaca_key,
-                    "APCA-API-SECRET-KEY": alpaca_secret,
-                },
-            )
-            resp.raise_for_status()
-            account = resp.json()
-    except httpx.HTTPError as exc:
+        account = await resolve_paper_account(alpaca_key, alpaca_secret)
+    except AlpacaPaperModeError as exc:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Unable to resolve paper account equity from Alpaca.",
+            detail="Unable to verify Alpaca account is paper trading.",
         ) from exc
-
-    if not account.get("paper", account.get("paper_trading", False)):
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Configured Alpaca account is not a paper trading account.",
-        )
 
     try:
         equity = float(account["equity"])

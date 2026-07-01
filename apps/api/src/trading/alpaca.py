@@ -10,8 +10,10 @@ from uuid import uuid4
 import httpx
 import structlog
 
+from src.core.startup_checks import AlpacaPaperModeError, resolve_paper_account
 from src.trading.broker import BrokerABC
 from src.trading.circuit_breaker import CircuitBreaker, CircuitBreakerOpen
+from src.trading.market_data import MarketDataClient
 from src.trading.models import (
     AssetClass,
     ExecutionMode,
@@ -27,7 +29,6 @@ from src.trading.models import (
     Quote,
     TimeInForce,
 )
-from src.trading.market_data import MarketDataClient
 
 log = structlog.get_logger(__name__)
 
@@ -87,16 +88,14 @@ class AlpacaPaperBroker(BrokerABC):
         self._market_data = MarketDataClient(self._api_key, self._api_secret)
         await self._market_data.connect()
 
-        # Verify connectivity + confirm paper mode (no retry — intentional: fail fast on connect)
-        resp = await self._client.get("/account")
-        resp.raise_for_status()
-        account = resp.json()
-        if not account.get("paper_trading", False):
+        # Verify connectivity + confirm paper mode (no retry — intentional: fail fast on connect).
+        # Alpaca's /v2/account has no "paper_trading" field; mode is confirmed by
+        # checking the key authenticates on paper and is rejected on live.
+        try:
+            account = await resolve_paper_account(self._api_key, self._api_secret)
+        except AlpacaPaperModeError:
             await self.disconnect()
-            log.critical("CRITICAL: Alpaca account is LIVE. Immediately locking.")
-            raise RuntimeError(
-                "Alpaca account is NOT a paper account. Live trading is disabled."
-            )
+            raise
 
         self._connected = True
         log.info("alpaca_paper_connected", account_id=account.get("id"))
